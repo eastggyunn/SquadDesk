@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Hash, Plus, Settings, Trash2 } from "lucide-react";
 import type { ChatChannel } from "@/lib/store/chat-store";
@@ -25,6 +25,11 @@ interface ChannelSidebarProps {
   onArchiveChannel: (channelId: string) => void;
 }
 
+
+/** 한글 IME 조합을 확정하는 Enter인지 — 채팅 입력창과 같은 판정(isComposing이 브라우저마다 달라 keyCode 229도 본다). */
+function isImeComposing(event: KeyboardEvent<HTMLInputElement>) {
+  return event.nativeEvent.isComposing || event.keyCode === 229;
+}
 
 /** 채널 삭제 버튼은 Supabase 모드에서 보관(archive)으로 동작하므로, 되돌릴 수 있는 동작임을 알리는 문구·톤으로 확인 모달을 띄운다. */
 const ARCHIVE_CONFIRM_COPY = {
@@ -121,13 +126,13 @@ export function ChannelSidebar({
                   aria-busy={isAddingChannel}
                   onChange={(event) => setNewChannelName(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") {
+                    if (event.key === "Enter" && !isImeComposing(event)) {
                       event.preventDefault();
                       handleCreateChannel();
                     }
                   }}
                   placeholder="새 채널 이름"
-                  className="flex-1 rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 transition-opacity duration-150 focus:border-cyan-500 focus:outline-none disabled:opacity-60"
+                  className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600 transition-opacity duration-150 focus:border-cyan-500 focus:outline-none disabled:opacity-60"
                 />
                 <button
                   type="button"
@@ -159,7 +164,7 @@ export function ChannelSidebar({
                       setEditingChannel({ id: editingChannel.id, name: event.target.value })
                     }
                     onKeyDown={(event) => {
-                      if (event.key === "Enter") {
+                      if (event.key === "Enter" && !isImeComposing(event)) {
                         event.preventDefault();
                         commitEditing();
                       }
@@ -169,7 +174,7 @@ export function ChannelSidebar({
                       }
                     }}
                     onBlur={commitEditing}
-                    className="w-full rounded-md border border-cyan-500/50 bg-zinc-950 px-2 py-1 text-sm text-zinc-100 focus:outline-none"
+                    className="w-full min-w-0 rounded-md border border-cyan-500/50 bg-zinc-950 px-2 py-1 text-sm text-zinc-100 focus:outline-none"
                   />
                 </div>
               );
