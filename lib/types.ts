@@ -68,3 +68,29 @@ export interface ChatMessage {
   /** 발신자(users.id). 첨부파일 삭제 등 "작성자만" 권한을 클라이언트에서 판단할 때 쓴다. Supabase 모드에서만 채워진다. */
   senderId?: string;
 }
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  author: Assignee;
+  /** 작성자(users.id). "본인 댓글만 삭제" 판단용 — Supabase 모드에서만 채워진다. */
+  authorId?: string;
+  content: string;
+  /** ISO 시각. */
+  createdAt: string;
+  /** 작성할 때 @로 고른 멤버 id(목업 모드는 이름). 본문 강조와 알림 대상이 된다. */
+  mentionedUserIds: string[];
+}
+
+/** 상단 종 아이콘의 알림 한 건. 지금은 작업 댓글 멘션 한 종류뿐이다. */
+export interface AppNotification {
+  id: string;
+  kind: "task_comment_mention";
+  projectId: string;
+  actorName: string;
+  taskId: string | null;
+  taskTitle: string | null;
+  commentExcerpt: string | null;
+  createdAt: string;
+  isRead: boolean;
+}

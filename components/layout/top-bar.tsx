@@ -10,14 +10,17 @@ import { getAvatarColor } from "@/lib/avatar-color";
 import { useHasMounted } from "@/lib/hooks/use-has-mounted";
 import { NAV_ITEMS, isNavItemActive } from "./nav-items";
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationBell } from "./notification-bell";
+import { useCurrentUser } from "@/components/providers/current-user-provider";
 
 const MAX_AVATARS = 5;
 
-/** 화면 맨 위 줄 — 왼쪽은 "프로젝트 / 현재 화면", 오른쪽은 테마 전환과 프로젝트 멤버 아바타 묶음. */
+/** 화면 맨 위 줄 — 왼쪽은 "프로젝트 / 현재 화면", 오른쪽은 테마 전환·알림·프로젝트 멤버 아바타 묶음. */
 export function TopBar() {
   const pathname = usePathname();
   const supabaseMode = isSupabaseConfigured();
   const { activeProject } = useActiveProject();
+  const currentUser = useCurrentUser();
   const remoteMembers = useProjectMembers(supabaseMode ? activeProject?.id ?? null : null);
   const mockTasks = useTasksStore((state) => state.tasks);
   // 멤버 목록은 localStorage에 저장된 작업에서 오므로 마운트 뒤에만 그린다(서버 렌더와 어긋나지 않게).
@@ -51,6 +54,7 @@ export function TopBar() {
 
       <div className="flex shrink-0 items-center gap-3">
         <ThemeToggle />
+        {supabaseMode && currentUser.id && <NotificationBell userId={currentUser.id} />}
         {visible.length > 0 && (
           <div className="flex shrink-0 items-center" aria-label={`멤버 ${memberNames.length}명`}>
             {visible.map((name) => (

@@ -242,6 +242,28 @@ export type AcceptInvitationRow = {
   project_name: string | null;
 };
 
+export type TaskCommentRow = {
+  id: string;
+  project_id: string;
+  task_id: string;
+  author_id: string | null;
+  content: string;
+  mentioned_user_ids: string[];
+  created_at: string;
+};
+
+export type NotificationRow = {
+  id: string;
+  user_id: string;
+  project_id: string;
+  kind: "task_comment_mention";
+  actor_id: string | null;
+  task_id: string | null;
+  comment_id: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
 // __InternalSupabase는 최신 @supabase/postgrest-js가 클라이언트 옵션(PostgREST
 // 버전 등)을 읽는 자리다. Tables/Views와 함께 Functions/Enums/CompositeTypes
 // 네 키를 전부 채워 GenericSchema 제약을 명확히 만족시킨다 — 하나라도 비면
@@ -259,6 +281,8 @@ export type Database = {
       work_domains: Table<WorkDomainRow>;
       sprints: Table<SprintRow>;
       tasks: Table<TaskRow>;
+      task_comments: Table<TaskCommentRow>;
+      notifications: Table<NotificationRow>;
       bugs: Table<BugRow>;
       chat_channels: Table<ChatChannelRow>;
       chat_messages: Table<ChatMessageRow>;

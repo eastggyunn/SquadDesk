@@ -5,6 +5,7 @@ import { WORK_DOMAINS_STORE_KEY } from "./work-domains-store";
 import { SYNCED_ASSETS_STORE_KEY } from "./synced-assets-store";
 import { ACTIVE_PROJECT_STORE_KEY } from "./active-project-store";
 import { SPRINTS_STORE_KEY } from "./sprints-store";
+import { TASK_COMMENTS_STORE_KEY } from "./task-comments-store";
 
 const PERSISTED_STORE_KEYS = [
   TASKS_STORE_KEY,
@@ -14,6 +15,7 @@ const PERSISTED_STORE_KEYS = [
   SYNCED_ASSETS_STORE_KEY,
   ACTIVE_PROJECT_STORE_KEY,
   SPRINTS_STORE_KEY,
+  TASK_COMMENTS_STORE_KEY,
 ];
 
 /**

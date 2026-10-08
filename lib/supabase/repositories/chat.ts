@@ -2,9 +2,10 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type { Assignee, ChatMessage } from "@/lib/types";
 import type { ChatChannel } from "@/lib/store/chat-store";
 import { formatChatTimestamp } from "@/lib/format";
-import type { ChatMessageRow, Database, UserRow } from "../schema";
+import type { ChatMessageRow, Database } from "../schema";
 import { mapChatChannelRowToChatChannel, mapChatMessageRowToChatMessage } from "../mappers";
 import { listAttachmentsForTargets } from "./attachments";
+import { fetchUsersById } from "./users";
 
 type Client = SupabaseClient<Database>;
 
@@ -81,16 +82,6 @@ export async function archiveChannel(supabase: Client, channelId: string): Promi
   if (error) throw error;
 }
 
-/** 발신자(users) 행을 id로 조회해 Map으로 돌려준다. senderIds가 비어 있으면 조회하지 않는다. */
-async function fetchUsersById(supabase: Client, senderIds: string[]): Promise<Map<string, UserRow>> {
-  const usersById = new Map<string, UserRow>();
-  if (senderIds.length === 0) return usersById;
-  const { data, error } = await supabase.from("users").select("*").in("id", senderIds);
-  if (error) throw error;
-  for (const user of data ?? []) usersById.set(user.id, user);
-  return usersById;
-}
-
 /**
  * 발신자(users) 행과 첨부파일을 별도 조회해 붙인다 — tasks.ts의 enrichTasks와
  * 같은 이유로 임베디드 select 대신 이 방식을 쓴다(schema.ts가 손으로 쓴 최소
@@ -101,13 +92,10 @@ async function fetchUsersById(supabase: Client, senderIds: string[]): Promise<Ma
 async function enrichMessages(supabase: Client, rows: ChatMessageRow[]): Promise<ChatMessage[]> {
   if (rows.length === 0) return [];
 
-  const senderIds = Array.from(
-    new Set(rows.map((row) => row.sender_id).filter((id): id is string => Boolean(id)))
-  );
   const messageIds = rows.map((row) => row.id);
 
   const [usersById, attachmentsByMessageId] = await Promise.all([
-    fetchUsersById(supabase, senderIds),
+    fetchUsersById(supabase, rows.map((row) => row.sender_id)),
     listAttachmentsForTargets(supabase, "chat_message", messageIds),
   ]);
 
@@ -138,7 +126,7 @@ export async function listMessages(supabase: Client, channelId: string): Promise
  * 별도 realtime 구독(use-chat-attachment-uploads.ts)이 채운다.
  */
 export async function enrichMessageRow(supabase: Client, row: ChatMessageRow): Promise<ChatMessage> {
-  const usersById = await fetchUsersById(supabase, row.sender_id ? [row.sender_id] : []);
+  const usersById = await fetchUsersById(supabase, [row.sender_id]);
   return mapChatMessageRowToChatMessage({
     ...row,
     sender: row.sender_id ? (usersById.get(row.sender_id) ?? null) : null,

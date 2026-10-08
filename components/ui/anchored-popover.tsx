@@ -6,7 +6,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { SPRING } from "@/lib/motion";
 
 interface Coords {
-  left: number;
+  left?: number;
+  right?: number;
   top?: number;
   bottom?: number;
 }
@@ -16,6 +17,8 @@ interface AnchoredPopoverProps {
   onClose: () => void;
   anchorRef: RefObject<HTMLElement>;
   placement?: "top" | "bottom";
+  /** "end"면 트리거 오른쪽 끝에 맞춰 왼쪽으로 펼친다 — 화면 오른쪽 가장자리의 버튼용. */
+  align?: "start" | "end";
   widthClassName?: string;
   children: ReactNode;
 }
@@ -27,6 +30,7 @@ export function AnchoredPopover({
   onClose,
   anchorRef,
   placement = "top",
+  align = "start",
   widthClassName = "w-64",
   children,
 }: AnchoredPopoverProps) {
@@ -40,10 +44,11 @@ export function AnchoredPopover({
       const rect = anchorRef.current?.getBoundingClientRect();
       if (!rect) return;
 
+      const horizontal = align === "end" ? { right: window.innerWidth - rect.right } : { left: rect.left };
       if (placement === "top") {
-        setCoords({ left: rect.left, bottom: window.innerHeight - rect.top + GAP });
+        setCoords({ ...horizontal, bottom: window.innerHeight - rect.top + GAP });
       } else {
-        setCoords({ left: rect.left, top: rect.bottom + GAP });
+        setCoords({ ...horizontal, top: rect.bottom + GAP });
       }
     }
 
@@ -63,19 +68,25 @@ export function AnchoredPopover({
       }
     }
 
+    // 팝오버 안쪽 목록을 스크롤할 때는 닫지 않는다 — 바깥(페이지)이 스크롤될 때만 위치가 어긋난다.
+    function handleScroll(event: Event) {
+      if (popoverRef.current?.contains(event.target as Node)) return;
+      onClose();
+    }
+
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
     window.addEventListener("resize", onClose);
-    window.addEventListener("scroll", onClose, true);
+    window.addEventListener("scroll", handleScroll, true);
 
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("resize", onClose);
-      window.removeEventListener("scroll", onClose, true);
+      window.removeEventListener("scroll", handleScroll, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, placement]);
+  }, [open, placement, align]);
 
   if (typeof document === "undefined") return null;
 
@@ -91,10 +102,12 @@ export function AnchoredPopover({
           style={{
             position: "fixed",
             left: coords.left,
+            right: coords.right,
             top: coords.top,
             bottom: coords.bottom,
             // 트리거 쪽에서 펼쳐지도록 — 위로 열리면 아래 가장자리, 아래로 열리면 위 가장자리가 기준.
-            transformOrigin: placement === "top" ? "50% 100%" : "50% 0%",
+            // 오른쪽 끝 정렬이면 가로 기준도 트리거가 있는 오른쪽 끝이다.
+            transformOrigin: `${align === "end" ? "100%" : "50%"} ${placement === "top" ? "100%" : "0%"}`,
           }}
           className={`z-[80] ${widthClassName} rounded-xl border border-zinc-700 bg-zinc-900 p-3 shadow-2xl`}
         >

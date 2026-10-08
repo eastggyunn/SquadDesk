@@ -12,6 +12,9 @@ export interface MentionMember {
   name: string;
 }
 
+/** 목업 모드의 멘션 후보 — 데모에는 사용자 id가 없어 이름을 id로 쓴다. */
+export const MOCK_MENTION_MEMBERS: MentionMember[] = MOCK_TEAM_MEMBERS.map((name) => ({ id: name, name }));
+
 interface MentionPopoverProps {
   open: boolean;
   onClose: () => void;

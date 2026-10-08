@@ -19,7 +19,7 @@ import { useChatAttachmentUploads, type FileToSend } from "@/lib/supabase/hooks/
 import type { ProjectMemberOption } from "@/lib/supabase/repositories/project-members";
 import { MessageRow } from "./message-row";
 import { EmojiPopover } from "./emoji-popover";
-import { MentionPopover, MOCK_TEAM_MEMBERS, type MentionMember } from "./mention-popover";
+import { MentionPopover, MOCK_MENTION_MEMBERS, type MentionMember } from "./mention-popover";
 
 interface ChatRoomProps {
   channelName: string;
@@ -32,8 +32,6 @@ interface ChatRoomProps {
   projectMembers: ProjectMemberOption[];
   projectMembersLoading: boolean;
 }
-
-const MOCK_MENTION_MEMBERS: MentionMember[] = MOCK_TEAM_MEMBERS.map((name) => ({ id: name, name }));
 
 function toAttachment(file: File): Attachment {
   return { id: crypto.randomUUID(), name: file.name, kind: inferAttachmentKind(file.name) };

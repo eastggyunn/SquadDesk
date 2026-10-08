@@ -2,12 +2,12 @@
 // Zustand 스토어는 아직 이 모듈을 사용하지 않는다 — 화면은 계속 목업/localStorage
 // 데이터로 동작하고, 이 파일은 다음 단계(실 CRUD 연결)를 위한 기반이다.
 
-import type { Assignee, Attachment, Bug, ChatMessage, Sprint, Task } from "@/lib/types";
+import type { Assignee, Attachment, Bug, ChatMessage, Sprint, Task, TaskComment } from "@/lib/types";
 import type { ChatChannel } from "@/lib/store/chat-store";
 import type { SyncedAsset, SyncedAssetCategory } from "@/lib/store/synced-assets-store";
 import type { WorkDomain } from "@/lib/store/work-domains-store";
 import { formatChatTimestamp } from "@/lib/format";
-import type { AssetCategoryRow, AttachmentRow, BugRow, ChatChannelRow, ChatMessageRow, ProjectRow, SprintRow, TaskRow, UserRow, WorkDomainRow } from "./schema";
+import type { AssetCategoryRow, AttachmentRow, BugRow, ChatChannelRow, ChatMessageRow, ProjectRow, SprintRow, TaskCommentRow, TaskRow, UserRow, WorkDomainRow } from "./schema";
 
 // Task.assignee / Bug.reporter / ChatMessage.author는 UI 타입 상 필수 필드이지만,
 // DB의 assignee_id/reporter_id/sender_id는 nullable(담당자 미배정, 탈퇴 사용자 등)이다.
@@ -16,7 +16,7 @@ import type { AssetCategoryRow, AttachmentRow, BugRow, ChatChannelRow, ChatMessa
 // 있으므로, 실제 사용자와 절대 겹치지 않도록 이 fallback인지 isPlaceholderAssignee로
 // 판별할 수 있게 해둔다.
 const UNASSIGNED: Assignee = { name: "미배정", role: "Unassigned" };
-const UNKNOWN_USER: Assignee = { name: "알 수 없음", role: "Unknown" };
+export const UNKNOWN_USER: Assignee = { name: "알 수 없음", role: "Unknown" };
 
 /**
  * 보관 여부 판정의 단일 출처(서버 레이아웃과 클라이언트 훅이 같이 쓴다).
@@ -105,6 +105,18 @@ export function mapChatMessageRowToChatMessage(row: ChatMessageRowWithRelations)
     timestamp: formatChatTimestamp(new Date(row.created_at)),
     attachments: mapAttachments(row.attachments),
     senderId: row.sender_id ?? undefined,
+  };
+}
+
+export function mapTaskCommentRowToTaskComment(row: TaskCommentRow & { author: UserRow | null }): TaskComment {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    author: mapUserRowToAssignee(row.author, UNKNOWN_USER),
+    authorId: row.author_id ?? undefined,
+    content: row.content,
+    createdAt: row.created_at,
+    mentionedUserIds: row.mentioned_user_ids,
   };
 }
 

@@ -4,6 +4,7 @@ import type { Task } from "@/lib/types";
 import type { WorkDomain } from "@/lib/store/work-domains-store";
 import { SlideOverPanel } from "@/components/ui/slide-over-panel";
 import { TaskForm, type TaskFormValues } from "./task-form";
+import { TaskComments } from "./task-comments";
 import type { ProjectMemberOption } from "@/lib/supabase/repositories/project-members";
 
 export type { TaskFormValues } from "./task-form";
@@ -57,6 +58,14 @@ export function TaskFormDrawer({
         onSubmit={onSubmit}
         onRequestDelete={onRequestDelete}
       />
+      {/* 댓글은 이미 저장된 작업에만 단다. */}
+      {mode === "edit" && task && (
+        <TaskComments
+          taskId={task.id}
+          projectId={projectId ?? null}
+          projectMembers={projectMembers ?? []}
+        />
+      )}
     </SlideOverPanel>
   );
 }

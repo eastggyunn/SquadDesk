@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, LayoutGroup } from "framer-motion";
 import { Plus, Settings2 } from "lucide-react";
 import type { Sprint, Task, TaskPriority, TaskStatus } from "@/lib/types";
@@ -48,7 +49,7 @@ function describeSprint(sprint: Sprint) {
   return `${sprint.name} · ${formatSprintRange(sprint)} · ${status}`;
 }
 
-export function KanbanBoard() {
+export function KanbanBoard({ deepLinkTaskId }: { deepLinkTaskId: string | null }) {
   const supabaseMode = isSupabaseConfigured();
   const currentUser = useCurrentUser();
   const { activeProject } = useActiveProject();
@@ -100,6 +101,18 @@ export function KanbanBoard() {
   const [formState, setFormState] = useState<FormState | null>(null);
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  // 알림(NotificationBell)에서 /kanban?task=<id>로 들어오면 그 작업 서랍을 연다. 작업이 목록에
+  // 들어온 뒤에 한 번만 열고 주소에서 지운다 — 서랍을 닫은 뒤 새로고침해도 다시 열리지 않게.
+  const router = useRouter();
+  useEffect(() => {
+    if (!deepLinkTaskId) return;
+    const task = tasks.find((candidate) => candidate.id === deepLinkTaskId);
+    if (!task) return;
+    setSprintSelection(task.sprintId ?? "backlog"); // 그 작업이 속한 스프린트를 보여 카드가 화면에 있게 한다.
+    setFormState({ mode: "edit", task });
+    router.replace("/kanban", { scroll: false });
+  }, [deepLinkTaskId, tasks, router]);
 
   const visibleTasks =
     priorityFilter === "ALL" ? sprintTasks : sprintTasks.filter((task) => task.priority === priorityFilter);
