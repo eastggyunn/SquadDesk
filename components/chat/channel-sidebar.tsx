@@ -9,6 +9,8 @@ import { primaryButtonSm } from "@/components/ui/button-styles";
 import { SPRING } from "@/lib/motion";
 
 interface ChannelSidebarProps {
+  /** 사이드바 맨 위에 보여줄 현재 프로젝트 이름. */
+  projectName: string;
   channels: ChatChannel[];
   activeChannelId: string;
   /** Supabase 실데이터 모드면 삭제 버튼이 "보관"으로 동작·안내된다(메시지 이력 보존). */
@@ -33,6 +35,7 @@ const ARCHIVE_CONFIRM_COPY = {
 };
 
 export function ChannelSidebar({
+  projectName,
   channels,
   activeChannelId,
   isSupabaseMode,
@@ -76,7 +79,9 @@ export function ChannelSidebar({
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-800/60 bg-zinc-900/50">
       <div className="border-b border-zinc-800/60 px-4 py-4">
-        <h2 className="truncate text-sm font-semibold text-zinc-50">SquadDesk</h2>
+        <h2 className="truncate text-sm font-semibold text-zinc-50" title={projectName}>
+          {projectName}
+        </h2>
         <p className="text-xs text-zinc-500">팀 워크스페이스</p>
       </div>
 

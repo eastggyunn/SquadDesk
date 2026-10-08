@@ -81,6 +81,7 @@ export function ChatWorkspace() {
     <HydrationGate>
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden rounded-xl border border-zinc-800">
       <ChannelSidebar
+        projectName={(supabaseMode ? activeProject?.name : null) ?? "SquadDesk 데모"}
         channels={channels}
         activeChannelId={activeChannel?.id ?? ""}
         isSupabaseMode={supabaseMode}
