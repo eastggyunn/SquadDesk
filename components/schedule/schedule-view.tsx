@@ -17,7 +17,7 @@ import { TaskFormDrawer, type TaskFormValues } from "@/components/kanban/task-fo
 import { TaskListPanel } from "./task-list-panel";
 import { GanttChart } from "./gantt-chart";
 import { ViewModeControls } from "./view-mode-controls";
-import { getDateX, getTimelineRange, type ViewMode } from "./gantt-utils";
+import { getBarLayout, getDateX, getTimelineRange, type ViewMode } from "./gantt-utils";
 import { primaryButton } from "@/components/ui/button-styles";
 import { PageHeader } from "@/components/layout/page-header";
 import { surfaceLayoutId } from "@/lib/motion";
@@ -52,6 +52,12 @@ export function ScheduleView() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const range = useMemo(() => getTimelineRange(tasks), [tasks]);
+  const barlessTaskIds = useMemo(
+    () => new Set(tasks.filter((task) => !getBarLayout(task, viewMode, range)).map((task) => task.id)),
+    [tasks, viewMode, range]
+  );
+  // 실데이터 모드에선 첫 렌더 때 아직 로딩 중이라 스크롤 영역이 없다 — 영역이 생긴 시점에 오늘로 맞춘다.
+  const isGanttVisible = !(supabaseMode && supabaseTasks.isLoading) && tasks.length > 0;
 
   function scrollToToday(behavior: ScrollBehavior) {
     const container = scrollRef.current;
@@ -61,12 +67,13 @@ export function ScheduleView() {
   }
 
   useEffect(() => {
-    if (!hasMounted) return;
+    if (!hasMounted || !isGanttVisible) return;
     scrollToToday("auto");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMounted, viewMode]);
+  }, [hasMounted, viewMode, isGanttVisible]);
 
   const handleSelectTask = useCallback((task: Task) => setFormState({ mode: "edit", task }), []);
+  const expandedTaskId = formState?.mode === "edit" ? formState.task?.id : undefined;
 
   const { handleFormSubmit, handleDeleteConfirmed } = useTaskFormActions({
     supabaseMode,
@@ -135,13 +142,18 @@ export function ScheduleView() {
           ref={scrollRef}
           className="flex max-h-[70vh] overflow-auto rounded-xl border border-zinc-800 bg-zinc-900/30"
         >
-          <TaskListPanel tasks={tasks} />
+          <TaskListPanel
+            tasks={tasks}
+            onSelectTask={handleSelectTask}
+            barlessTaskIds={barlessTaskIds}
+            expandedTaskId={expandedTaskId}
+          />
           <GanttChart
             tasks={tasks}
             viewMode={viewMode}
             range={range}
             onSelectTask={handleSelectTask}
-            expandedTaskId={formState?.mode === "edit" ? formState.task?.id : undefined}
+            expandedTaskId={expandedTaskId}
           />
         </div>
       )}
