@@ -1,0 +1,25 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "/Users/heo-donggyun/.nvm/versions/node/v20.20.2/bin/npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000,
+      "autoPort": false
+    },
+    {
+      "name": "demo",
+      "runtimeExecutable": "/Users/heo-donggyun/.nvm/versions/node/v20.20.2/bin/npm",
+      "runtimeArgs": [
+        "run",
+        "dev:demo"
+      ],
+      "port": 3100,
+      "autoPort": false
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 디자인 토큰 — "R G B" 채널 형식이라 Tailwind 투명도 수식어(bg-zinc-900/60)가 그대로 동작한다.
+   neutral = 중립색(zinc-* 클래스), accent = 포인트색(cyan-* 클래스),
+   red·amber·emerald 등 = 상태색의 300~500 단계(그 외 단계는 Tailwind 기본값).
+   테마: 기본은 다크. html[data-theme="light"]이거나, 테마를 고르지 않았고(시스템) OS가 라이트면 라이트.
+   라이트 값은 아래 두 블록(직접 고른 라이트 / 시스템 라이트)에 똑같이 들어 있어야 한다. */
+:root {
+  --neutral-50: 246 247 250;
+  --neutral-100: 236 238 244;
+  --neutral-200: 217 220 229;
+  --neutral-300: 192 196 208;
+  --neutral-400: 163 168 182;
+  --neutral-500: 139 145 160;
+  --neutral-600: 106 112 128;
+  --neutral-700: 58 62 75;
+  --neutral-800: 37 40 50;
+  --neutral-900: 22 24 31;
+  --neutral-950: 13 14 19;
+
+  --accent-50: 240 242 255;
+  --accent-100: 226 230 255;
+  --accent-200: 205 212 255;
+  --accent-300: 184 194 255;
+  --accent-400: 165 178 255;
+  --accent-500: 139 155 255;
+  --accent-600: 111 127 240;
+  --accent-700: 88 101 214;
+  --accent-800: 66 76 168;
+  --accent-900: 46 53 117;
+  --accent-950: 28 32 71;
+
+  --red-300: 252 165 165; --red-400: 248 113 113; --red-500: 239 68 68;
+  --amber-300: 252 211 77; --amber-400: 251 191 36; --amber-500: 245 158 11;
+  --emerald-300: 110 231 183; --emerald-400: 52 211 153; --emerald-500: 16 185 129;
+  --blue-300: 147 197 253; --blue-400: 96 165 250; --blue-500: 59 130 246;
+  --rose-300: 253 164 175; --rose-400: 251 113 133; --rose-500: 244 63 94;
+  --violet-300: 196 181 253; --violet-400: 167 139 250; --violet-500: 139 92 246;
+  --orange-300: 253 186 116; --orange-400: 251 146 60; --orange-500: 249 115 22;
+  --purple-300: 216 180 254; --purple-400: 192 132 252; --purple-500: 168 85 247;
+  --pink-300: 249 168 212; --pink-400: 244 114 182; --pink-500: 236 72 153;
+
+  /* 떠 있는 패널(사이드바) 그림자 — 다크 바탕에서는 진하게, 라이트 바탕에서는 옅게. */
+  --panel-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+
+  color-scheme: dark;
+}
+
+/* 라이트: 중립색은 숫자가 클수록 밝아지도록 뒤집고(950 바탕·900 카드·100 글자),
+   포인트색·상태색 글자는 흰 바탕에서 읽히도록 진하게 바꾼다.
+   대비 목표(흰 카드 기준, WCAG): 보조 글자 500 ≈ 6:1, 흐린 글자 600 ≥ 4.5:1, 상태색 글자 ≥ 4.5:1. */
+:root[data-theme="light"] {
+  --neutral-50: 14 15 20;
+  --neutral-100: 26 28 35;
+  --neutral-200: 44 48 58;
+  --neutral-300: 62 67 80;
+  --neutral-400: 70 76 90;
+  --neutral-500: 92 98 112;
+  --neutral-600: 108 114 128;
+  --neutral-700: 188 193 204;
+  --neutral-800: 216 220 228;
+  --neutral-900: 255 255 255;
+  --neutral-950: 234 236 241;
+
+  --accent-50: 28 32 90;
+  --accent-100: 40 48 130;
+  --accent-200: 55 66 170;
+  --accent-300: 67 80 200;
+  --accent-400: 79 93 222;
+  --accent-500: 92 107 240;
+  --accent-600: 76 89 214;
+  --accent-700: 160 170 245;
+  --accent-800: 200 206 250;
+  --accent-900: 225 229 254;
+  --accent-950: 240 242 255;
+
+  --red-300: 185 28 28; --red-400: 220 38 38; --red-500: 239 68 68;
+  --amber-300: 146 64 14; --amber-400: 180 83 9; --amber-500: 245 158 11;
+  --emerald-300: 6 95 70; --emerald-400: 4 120 87; --emerald-500: 16 185 129;
+  --blue-300: 29 78 216; --blue-400: 37 99 235; --blue-500: 59 130 246;
+  --rose-300: 190 18 60; --rose-400: 225 29 72; --rose-500: 244 63 94;
+  --violet-300: 109 40 217; --violet-400: 124 58 237; --violet-500: 139 92 246;
+  --orange-300: 154 52 18; --orange-400: 194 65 12; --orange-500: 249 115 22;
+  --purple-300: 126 34 206; --purple-400: 147 51 234; --purple-500: 168 85 247;
+  --pink-300: 190 24 93; --pink-400: 219 39 119; --pink-500: 236 72 153;
+
+  --panel-shadow: 0 8px 30px rgb(20 24 40 / 0.08);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --neutral-50: 14 15 20;
+    --neutral-100: 26 28 35;
+    --neutral-200: 44 48 58;
+    --neutral-300: 62 67 80;
+    --neutral-400: 70 76 90;
+    --neutral-500: 92 98 112;
+    --neutral-600: 108 114 128;
+    --neutral-700: 188 193 204;
+    --neutral-800: 216 220 228;
+    --neutral-900: 255 255 255;
+    --neutral-950: 234 236 241;
+
+    --accent-50: 28 32 90;
+    --accent-100: 40 48 130;
+    --accent-200: 55 66 170;
+    --accent-300: 67 80 200;
+    --accent-400: 79 93 222;
+    --accent-500: 92 107 240;
+    --accent-600: 76 89 214;
+    --accent-700: 160 170 245;
+    --accent-800: 200 206 250;
+    --accent-900: 225 229 254;
+    --accent-950: 240 242 255;
+
+    --red-300: 185 28 28; --red-400: 220 38 38; --red-500: 239 68 68;
+    --amber-300: 146 64 14; --amber-400: 180 83 9; --amber-500: 245 158 11;
+    --emerald-300: 6 95 70; --emerald-400: 4 120 87; --emerald-500: 16 185 129;
+    --blue-300: 29 78 216; --blue-400: 37 99 235; --blue-500: 59 130 246;
+    --rose-300: 190 18 60; --rose-400: 225 29 72; --rose-500: 244 63 94;
+    --violet-300: 109 40 217; --violet-400: 124 58 237; --violet-500: 139 92 246;
+    --orange-300: 154 52 18; --orange-400: 194 65 12; --orange-500: 249 115 22;
+    --purple-300: 126 34 206; --purple-400: 147 51 234; --purple-500: 168 85 247;
+    --pink-300: 190 24 93; --pink-400: 219 39 119; --pink-500: 236 72 153;
+
+    --panel-shadow: 0 8px 30px rgb(20 24 40 / 0.08);
+
+    color-scheme: light;
+  }
+}
+
+/* body의 antialiased(글자를 얇게 그림)는 어두운 바탕용이다. 밝은 바탕에서는 글자가 가늘고
+   흐려 보이므로 라이트에서만 기본 렌더링으로 되돌린다. */
+:root[data-theme="light"] body {
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) body {
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--neutral-700)) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--neutral-700));
+  border-radius: 9999px;
+}
+
+/* 칸반 컬럼처럼 좁은 스크롤 영역 — 마우스를 올렸을 때만 스크롤바를 보인다. */
+.scrollbar-subtle {
+  scrollbar-color: transparent transparent;
+}
+
+.scrollbar-subtle:hover {
+  scrollbar-color: rgb(var(--neutral-700)) transparent;
+}

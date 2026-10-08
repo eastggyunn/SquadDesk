@@ -1,0 +1,25 @@
+-- ============================================================
+-- 대시보드 통합 에셋 직접 업로드 지원
+--
+-- 대시보드에서 파일을 직접 업로드해 카테고리의 최신 에셋으로 등록할 수 있게
+-- attachment_target_type에 'asset_category'를 추가한다. target_id는
+-- asset_categories.id를 가리킨다 — 다른 target_type(task/bug/chat_message)과
+-- 동일하게 애플리케이션 계층에서 무결성을 보장하는 다형성 참조다
+-- (attachments 테이블 자체가 이미 이 패턴으로 설계돼 있다, 00000000000006).
+--
+-- 추가 변경이 필요 없는 이유
+-- - Storage RLS(00000000000011)는 오브젝트 경로의 첫 세그먼트(project_id)만으로
+--   접근을 판단해 target_type과 무관하게 이미 새 값을 지원한다.
+-- - attachments RLS(attachments_all_member, 00000000000008)도 target_type을
+--   구분하지 않고 project_id 멤버십만 본다.
+-- - asset_syncs.category_id는 이미 on delete cascade라(00000000000006) 카테고리
+--   삭제 시 동기화 이력은 자동으로 정리되고, attachment_id는 별도 FK라 원본
+--   attachments 행은 asset_syncs가 지워져도 남는다.
+-- 그래서 이 마이그레이션은 enum 값 추가 하나만 한다.
+--
+-- 주의: ALTER TYPE ... ADD VALUE로 추가한 값은 같은 트랜잭션 안에서는 쓸 수
+-- 없다(Postgres 제약) — 이 파일은 값 추가만 하고, 실제 사용(insert)은 이후
+-- 별도 트랜잭션(애플리케이션 런타임)에서 일어나므로 안전하다.
+-- ============================================================
+
+alter type public.attachment_target_type add value 'asset_category';
