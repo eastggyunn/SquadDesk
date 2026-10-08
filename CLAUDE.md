@@ -4,7 +4,7 @@
 
 After implementing any feature, fix, or refactor in this project, proactively run before considering the task done — do not wait to be asked again. These are scoped narrowly on purpose to keep token usage down; do not widen scope beyond what's below unless the user asks.
 
-1. **`simplify`** — review ONLY the files changed in the current task (never the whole project). Apply fixes directly; skip anything that would change intended behavior, and say what was skipped and why. This project has no git repository, so there's no `git diff` to gather in Phase 0 — treat the set of files actually touched in this task as the review target.
+1. **`simplify`** — review ONLY the files changed in the current task (never the whole project). Apply fixes directly; skip anything that would change intended behavior, and say what was skipped and why. This project is a git repository (branch `main`), but the review target is still only the files actually touched in this task — not the whole uncommitted diff.
 2. **`find-animation-opportunities`** followed by **`improve-animations`** — run ONLY when the task actually added or changed a new UI interaction (a new interactive element, a new open/close/transition state, a new form/panel/toggle), and scope the sweep to only those changed UI files. **Skip this step entirely** for tasks that only touch database/migrations, auth/server logic, docs, or config — no UI files means nothing to animate.
 
 Do **not** proactively run `security-review` or `init`/documentation skills — only on explicit request.
