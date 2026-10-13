@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { Upload } from "tus-js-client";
 import type { Attachment, AttachmentKind } from "@/lib/types";
 import { inferAttachmentKind } from "@/components/kanban/attachment-icon";
-import { clearUploadProgress, reportUploadProgress } from "@/lib/upload-progress";
+import { clearUploadProgress, reportUploadProgress, setUploadActive } from "@/lib/upload-progress";
 import type { AttachmentRow, AttachmentTargetType, Database } from "../schema";
 import { getSupabaseEnv } from "../env";
 
@@ -115,6 +115,19 @@ export async function uploadAttachment(
 
   const storagePath = buildStoragePath(ctx.projectId, ctx.id, ctx.file.name);
 
+  setUploadActive(ctx.id, true);
+  try {
+    return await uploadAndRecord(supabase, ctx, storagePath);
+  } finally {
+    setUploadActive(ctx.id, false);
+  }
+}
+
+async function uploadAndRecord(
+  supabase: Client,
+  ctx: AttachmentTarget & { id: string; file: File },
+  storagePath: string
+): Promise<{ storagePath: string }> {
   // 성공하면 진행률을 100%로 둔다 — 지우면 칩이 사라지기 직전 "업로드 중..."으로 깜빡인다.
   // 정리는 표시하던 UploadingLabel이 언마운트될 때 한다. 실패하면 바로 지워 재시도가 0%부터 보이게 한다.
   try {

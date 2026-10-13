@@ -32,11 +32,26 @@ export function clearUploadProgress(attachmentId: string) {
   if (percentById.delete(attachmentId)) emit();
 }
 
-/** 업로드 중이 아니면 null. */
+/** 진행률을 아직 모르면 null(업로드 전, 실패 후, 표시가 사라진 뒤). */
 export function useUploadProgress(attachmentId: string): number | null {
   return useSyncExternalStore(
     subscribe,
     () => percentById.get(attachmentId) ?? null,
     () => null
   );
+}
+
+/**
+ * 지금 전송·저장 중인 업로드의 attachment id. 진행률(percentById)은 성공 후에도 100%로
+ * 남으므로 "진행 중인가"는 따로 센다 — 페이지를 떠날 때 경고할지(UploadLeaveGuard) 판단용.
+ */
+const activeUploadIds = new Set<string>();
+
+export function setUploadActive(attachmentId: string, active: boolean) {
+  if (active) activeUploadIds.add(attachmentId);
+  else activeUploadIds.delete(attachmentId);
+}
+
+export function hasActiveUploads(): boolean {
+  return activeUploadIds.size > 0;
 }
