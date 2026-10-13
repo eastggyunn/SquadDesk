@@ -69,9 +69,11 @@ export function ChatWorkspace() {
 
   const mockMessages = activeChannel?.id === GENERAL_CHANNEL_ID ? MOCK_MESSAGES : [];
 
+  // 8rem = 앱 셸의 위 여백(pt-5) + TopBar(h-11) + 그 아래 간격(mb-8) + 아래 여백(pb-8).
+  // 이보다 작게 빼면 문서가 넘쳐 페이지 전체가 스크롤된다.
   if (supabaseMode && !activeProjectId) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center rounded-xl border border-zinc-800 text-sm text-zinc-500">
+      <div className="flex h-[calc(100vh-8rem)] items-center justify-center rounded-xl border border-zinc-800 text-sm text-zinc-500">
         소속된 프로젝트가 없습니다. 프로젝트에 참여한 뒤 다시 확인해주세요.
       </div>
     );
@@ -79,7 +81,7 @@ export function ChatWorkspace() {
 
   return (
     <HydrationGate>
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden rounded-xl border border-zinc-800">
+    <div className="flex h-[calc(100vh-8rem)] overflow-hidden rounded-xl border border-zinc-800">
       <ChannelSidebar
         projectName={(supabaseMode ? activeProject?.name : null) ?? "SquadDesk 데모"}
         channels={channels}

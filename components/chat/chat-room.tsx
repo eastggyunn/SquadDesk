@@ -66,7 +66,7 @@ export function ChatRoom({
 
   const [isMentionOpen, setIsMentionOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const scrollAnchorRef = useRef<HTMLDivElement>(null);
+  const messageListRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mentionButtonRef = useRef<HTMLButtonElement>(null);
@@ -82,7 +82,9 @@ export function ChatRoom({
   composerAttachmentsRef.current = composerAttachments;
 
   useEffect(() => {
-    scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth" });
+    // scrollIntoView는 문서 등 스크롤 가능한 조상까지 모두 움직이므로, 메시지 목록만 스크롤한다.
+    const list = messageListRef.current;
+    list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   async function sendMessage() {
@@ -263,7 +265,7 @@ export function ChatRoom({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto py-3">
+      <div ref={messageListRef} className="flex-1 overflow-y-auto py-3">
         {supabaseMode && supabaseChat.isLoading ? (
           <div className="flex h-full items-center justify-center text-sm text-zinc-500">
             메시지를 불러오는 중입니다...
@@ -305,7 +307,6 @@ export function ChatRoom({
                 );
               })}
             </AnimatePresence>
-            <div ref={scrollAnchorRef} />
           </>
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
