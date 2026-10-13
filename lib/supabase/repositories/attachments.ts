@@ -15,7 +15,7 @@ export const ALLOWED_ATTACHMENT_EXTENSIONS = [
   "pdf", "doc", "docx", "ppt", "pptx", "txt", "log", "json",
 ];
 
-export const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
+export const MAX_ATTACHMENT_SIZE_BYTES = 50 * 1024 * 1024; // 50MB (Supabase 전역 업로드 제한과 동일)
 
 /** 확장자/용량 제한을 벗어나면 한국어 안내 메시지를, 문제 없으면 null을 반환한다. */
 export function validateAttachmentFile(file: File): string | null {
