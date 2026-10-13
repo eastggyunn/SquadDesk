@@ -16,7 +16,7 @@ interface UseSupabaseSyncedAssetsResult {
   error: string | null;
   addCategory: (label: string) => Promise<void>;
   removeCategory: (categoryId: string) => Promise<void>;
-  uploadAsset: (categoryId: string, file: File, sourceLabel: string) => Promise<void>;
+  uploadAsset: (categoryId: string, file: File, sourceLabel: string, attachmentId: string) => Promise<void>;
   renameAsset: (categoryId: string, name: string) => Promise<void>;
 }
 
@@ -151,7 +151,7 @@ export function useSupabaseSyncedAssets(
     }
   }
 
-  async function uploadAsset(categoryId: string, file: File, sourceLabel: string) {
+  async function uploadAsset(categoryId: string, file: File, sourceLabel: string, attachmentId: string) {
     if (!projectId || !currentUserId) return;
     setError(null);
     try {
@@ -161,7 +161,8 @@ export function useSupabaseSyncedAssets(
         categoryId,
         currentUserId,
         file,
-        sourceLabel
+        sourceLabel,
+        attachmentId
       );
       await refetchAssetFor(categoryId);
     } catch (err) {

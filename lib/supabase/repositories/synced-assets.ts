@@ -206,9 +206,10 @@ export async function uploadAndSyncAsset(
   categoryId: string,
   uploadedBy: string,
   file: File,
-  sourceLabel: string
+  sourceLabel: string,
+  /** 호출부가 미리 만든 첨부 id — 화면이 이 id로 업로드 진행률을 구독한다(lib/upload-progress). */
+  attachmentId: string
 ): Promise<void> {
-  const attachmentId = crypto.randomUUID();
   const { storagePath } = await uploadAttachment(supabase, {
     projectId,
     targetType: "asset_category",

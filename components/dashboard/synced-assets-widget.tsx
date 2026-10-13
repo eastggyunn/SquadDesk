@@ -20,6 +20,7 @@ import { createAttachmentPreviewUrl, downloadAttachment } from "@/lib/supabase/r
 import type { AssetSyncHistoryEntry } from "@/lib/supabase/repositories/synced-assets";
 import { DeleteConfirmModal } from "@/components/kanban/delete-confirm-modal";
 import { ErrorAlert } from "@/components/ui/error-alert";
+import { UploadingLabel } from "@/components/ui/uploading-label";
 import { AttachmentPreviewModal } from "@/components/ui/attachment-preview-modal";
 import { AssetVersionHistoryModal } from "./asset-version-history-modal";
 import { AssetVersionCompareModal } from "./asset-version-compare-modal";
@@ -51,7 +52,7 @@ export function SyncedAssetsWidget() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [uploadingCategoryId, setUploadingCategoryId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<{ categoryId: string; attachmentId: string } | null>(null);
   const [pendingDeleteCategoryId, setPendingDeleteCategoryId] = useState<string | null>(null);
   const [showAllCategories, setShowAllCategories] = useState(false);
 
@@ -77,10 +78,12 @@ export function SyncedAssetsWidget() {
 
   function handleUpload(categoryId: string, file: File) {
     if (supabaseMode) {
-      setUploadingCategoryId(categoryId);
+      // 첨부 id를 여기서 만들어 카드가 이 업로드의 진행률을 구독할 수 있게 한다.
+      const attachmentId = crypto.randomUUID();
+      setUploading({ categoryId, attachmentId });
       supabaseAssets
-        .uploadAsset(categoryId, file, DASHBOARD_UPLOAD_SOURCE)
-        .finally(() => setUploadingCategoryId(null));
+        .uploadAsset(categoryId, file, DASHBOARD_UPLOAD_SOURCE, attachmentId)
+        .finally(() => setUploading(null));
       return;
     }
     mockSyncAsset(
@@ -191,7 +194,9 @@ export function SyncedAssetsWidget() {
                 category={category}
                 asset={assets[category.id]}
                 isSupabaseMode={supabaseMode}
-                isUploading={supabaseMode && uploadingCategoryId === category.id}
+                uploadingAttachmentId={
+                  supabaseMode && uploading?.categoryId === category.id ? uploading.attachmentId : null
+                }
                 onUpload={handleUpload}
                 onRename={handleRename}
                 onRemoveCategory={() => setPendingDeleteCategoryId(category.id)}
@@ -223,7 +228,8 @@ interface SyncedAssetCardProps {
   category: SyncedAssetCategory;
   asset: SyncedAsset | undefined;
   isSupabaseMode: boolean;
-  isUploading: boolean;
+  /** 이 카드에서 업로드 중인 첨부 id(없으면 null). */
+  uploadingAttachmentId: string | null;
   onUpload: (categoryId: string, file: File) => void;
   onRename: (categoryId: string, name: string) => void;
   onRemoveCategory: () => void;
@@ -233,11 +239,12 @@ function SyncedAssetCard({
   category,
   asset,
   isSupabaseMode,
-  isUploading,
+  uploadingAttachmentId,
   onUpload,
   onRename,
   onRemoveCategory,
 }: SyncedAssetCardProps) {
+  const isUploading = uploadingAttachmentId !== null;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -327,7 +334,7 @@ function SyncedAssetCard({
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-zinc-500">{category.label}</p>
         <AnimatePresence initial={false}>
-          {isUploading ? (
+          {uploadingAttachmentId !== null ? (
             <motion.p
               key="uploading"
               initial={{ opacity: 0 }}
@@ -335,7 +342,7 @@ function SyncedAssetCard({
               className="mt-1 flex items-center gap-1.5 text-sm text-zinc-500"
             >
               <UploadCloud className="h-3.5 w-3.5 shrink-0 animate-pulse" />
-              업로드 중...
+              <UploadingLabel attachmentId={uploadingAttachmentId} />
             </motion.p>
           ) : asset ? (
             <motion.div
