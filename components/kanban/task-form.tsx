@@ -17,6 +17,7 @@ import { primaryButton, secondaryButton } from "@/components/ui/button-styles";
 import { useSprints } from "@/lib/hooks/use-sprints";
 import { formatSprintRange } from "@/lib/sprint-utils";
 import { Select } from "@/components/ui/select";
+import { UploadingLabel } from "@/components/ui/uploading-label";
 
 export interface TaskFormValues {
   title: string;
@@ -342,7 +343,7 @@ export function TaskForm({
                       )}
                       {pending && (
                         <span className="shrink-0 rounded-full bg-zinc-700/60 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
-                          {isSubmitting ? "업로드 중..." : "업로드 대기"}
+                          {isSubmitting ? <UploadingLabel attachmentId={attachment.id} /> : "업로드 대기"}
                         </span>
                       )}
                     </>

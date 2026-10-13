@@ -8,6 +8,7 @@ import { useAttachmentUploadState } from "@/lib/hooks/use-attachment-upload-stat
 import { primaryButton, secondaryButton } from "@/components/ui/button-styles";
 import { Select } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
+import { UploadingLabel } from "@/components/ui/uploading-label";
 
 export interface BugFormValues {
   title: string;
@@ -231,7 +232,7 @@ export function BugForm({ mode, bug, taskOptions, projectId, onClose, onSubmit, 
                 renderItemBadge={(attachment) =>
                   isSupabaseMode && isPending(attachment.id) ? (
                     <span className="shrink-0 rounded-full bg-zinc-700/60 px-2 py-0.5 text-[11px] font-medium text-zinc-300">
-                      {isSubmitting ? "업로드 중..." : "업로드 대기"}
+                      {isSubmitting ? <UploadingLabel attachmentId={attachment.id} /> : "업로드 대기"}
                     </span>
                   ) : null
                 }

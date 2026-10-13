@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { Upload } from "tus-js-client";
 import type { Attachment, AttachmentKind } from "@/lib/types";
 import { inferAttachmentKind } from "@/components/kanban/attachment-icon";
+import { clearUploadProgress, reportUploadProgress } from "@/lib/upload-progress";
 import type { AttachmentRow, AttachmentTargetType, Database } from "../schema";
+import { getSupabaseEnv } from "../env";
 
 type Client = SupabaseClient<Database>;
 
@@ -39,6 +42,55 @@ function buildStoragePath(projectId: string, attachmentId: string, filename: str
   return `${projectId}/${attachmentId}/${sanitizeFilenameForPath(filename)}`;
 }
 
+/** Supabase 이어 올리기(TUS)는 청크 크기가 정확히 6MB여야 한다. */
+const RESUMABLE_CHUNK_SIZE = 6 * 1024 * 1024;
+
+/**
+ * Supabase Storage의 TUS 엔드포인트로 이어 올리기 업로드를 한다. 네트워크가 끊기면
+ * retryDelays 간격으로 이어서 다시 시도하고, 같은 경로로 다시 호출하면(재시도/새로고침 후)
+ * 이전에 올라간 지점부터 이어서 올린다. fingerprint에 storagePath를 넣는 이유: 기본
+ * fingerprint는 파일 내용 정보만 써서, 같은 파일을 다른 작업에 첨부하면 남의 경로로
+ * 이어 올리기를 시도하게 된다. 토큰은 요청마다 새로 읽어 긴 업로드 중 만료에 대비한다.
+ */
+async function uploadResumable(
+  supabase: Client,
+  storagePath: string,
+  file: File,
+  onProgress: (fraction: number) => void
+): Promise<void> {
+  const { url, anonKey } = getSupabaseEnv();
+
+  await new Promise<void>((resolve, reject) => {
+    const upload = new Upload(file, {
+      endpoint: `${url}/storage/v1/upload/resumable`,
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      chunkSize: RESUMABLE_CHUNK_SIZE,
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      headers: { apikey: anonKey, "x-upsert": "false" },
+      metadata: {
+        bucketName: ATTACHMENTS_BUCKET,
+        objectName: storagePath,
+        contentType: file.type || "application/octet-stream",
+        cacheControl: "3600",
+      },
+      fingerprint: async (f) => ["squaddesk", storagePath, f.size, f.lastModified].join(":"),
+      onBeforeRequest: async (req) => {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) req.setHeader("authorization", `Bearer ${data.session.access_token}`);
+      },
+      onProgress: (bytesSent, bytesTotal) => onProgress(bytesTotal > 0 ? bytesSent / bytesTotal : 0),
+      onSuccess: () => resolve(),
+      onError: reject,
+    });
+
+    upload.findPreviousUploads().then((previous) => {
+      if (previous.length > 0) upload.resumeFromPreviousUpload(previous[0]);
+      upload.start();
+    }, reject);
+  });
+}
+
 interface AttachmentTarget {
   projectId: string;
   targetType: AttachmentTargetType;
@@ -47,7 +99,8 @@ interface AttachmentTarget {
 }
 
 /**
- * 파일을 Storage에 올리고 attachments 메타데이터 행을 추가한다. Storage 업로드는
+ * 파일을 Storage에 이어 올리기(uploadResumable)로 올리고 attachments 메타데이터 행을
+ * 추가한다. 진행률은 첨부 id로 lib/upload-progress에 알린다. Storage 업로드는
  * 성공했는데 메타데이터 저장이 실패하면(예: 네트워크 끊김) 고아 Storage 파일이
  * 남지 않도록 업로드한 파일을 즉시 삭제(보상 처리)하고 에러를 던진다. 호출부가
  * 이후 자기만의 보상 처리를 해야 할 때(예: synced-assets.ts) storage_path를
@@ -62,10 +115,13 @@ export async function uploadAttachment(
 
   const storagePath = buildStoragePath(ctx.projectId, ctx.id, ctx.file.name);
 
-  const { error: uploadError } = await supabase.storage
-    .from(ATTACHMENTS_BUCKET)
-    .upload(storagePath, ctx.file, { contentType: ctx.file.type || undefined, upsert: false });
-  if (uploadError) throw new Error(`파일 업로드에 실패했습니다: ${ctx.file.name}`);
+  try {
+    await uploadResumable(supabase, storagePath, ctx.file, (fraction) => reportUploadProgress(ctx.id, fraction));
+  } catch {
+    throw new Error(`파일 업로드에 실패했습니다: ${ctx.file.name}`);
+  } finally {
+    clearUploadProgress(ctx.id);
+  }
 
   const { error: insertError } = await supabase.from("attachments").insert({
     id: ctx.id,

@@ -8,6 +8,7 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { createAttachmentPreviewUrl, downloadAttachment } from "@/lib/supabase/repositories/attachments";
 import { AttachmentPreviewModal } from "@/components/ui/attachment-preview-modal";
 import { DeleteConfirmModal } from "@/components/kanban/delete-confirm-modal";
+import { UploadingLabel } from "@/components/ui/uploading-label";
 import { FADE, SPRING } from "@/lib/motion";
 import type {
   AttachmentDeleteState,
@@ -215,7 +216,9 @@ function MessageRowComponent({
                 <AttachmentChip key={attachment.id} tone="muted">
                   <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                   <span className="max-w-[140px] truncate">{attachment.name}</span>
-                  <span className="shrink-0 text-zinc-500">업로드 중...</span>
+                  <span className="shrink-0 text-zinc-500">
+                    <UploadingLabel attachmentId={attachment.id} />
+                  </span>
                 </AttachmentChip>
               ) : (
                 <AttachmentChip key={attachment.id} tone="error">
