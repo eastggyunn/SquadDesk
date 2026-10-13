@@ -1,4 +1,5 @@
 import { memo, useState, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import { Eye, Loader2, MessageSquare, MoreHorizontal, RefreshCw, Smile, Trash2 } from "lucide-react";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { getAvatarColor } from "@/lib/avatar-color";
@@ -7,6 +8,7 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { createAttachmentPreviewUrl, downloadAttachment } from "@/lib/supabase/repositories/attachments";
 import { AttachmentPreviewModal } from "@/components/ui/attachment-preview-modal";
 import { DeleteConfirmModal } from "@/components/kanban/delete-confirm-modal";
+import { FADE, SPRING } from "@/lib/motion";
 import type {
   AttachmentDeleteState,
   PendingChatAttachment,
@@ -23,6 +25,10 @@ interface MessageRowProps {
   /** attachmentId -> 삭제 진행/실패 상태. */
   attachmentDeleteState?: Map<string, AttachmentDeleteState>;
   onDeleteAttachment?: (messageId: string, attachment: Attachment) => void;
+  /** 본인 메시지일 때만 툴바에 삭제 버튼을 보여준다(실제 권한 경계는 DB의 RLS). */
+  onDeleteMessage?: (messageId: string) => void;
+  /** 삭제 요청이 진행 중이면 행을 흐리게 하고 다시 누를 수 없게 한다. */
+  isDeleting?: boolean;
 }
 
 type ChipTone = "default" | "muted" | "error";
@@ -49,15 +55,23 @@ function MessageRowComponent({
   currentUserId,
   attachmentDeleteState,
   onDeleteAttachment,
+  onDeleteMessage,
+  isDeleting = false,
 }: MessageRowProps) {
   const initials = message.author.name.slice(0, 1);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [previewingAttachment, setPreviewingAttachment] = useState<Attachment | null>(null);
   const [attachmentPendingDelete, setAttachmentPendingDelete] = useState<Attachment | null>(null);
+  const [isConfirmingMessageDelete, setIsConfirmingMessageDelete] = useState(false);
 
-  const canDeleteAttachments = Boolean(
-    onDeleteAttachment && currentUserId && message.senderId && message.senderId === currentUserId
-  );
+  const isOwnMessage = Boolean(currentUserId && message.senderId && message.senderId === currentUserId);
+  const canDeleteAttachments = isOwnMessage && Boolean(onDeleteAttachment);
+  const canDeleteMessage = isOwnMessage && Boolean(onDeleteMessage) && !isDeleting;
+
+  function confirmDeleteMessage() {
+    onDeleteMessage?.(message.id);
+    setIsConfirmingMessageDelete(false);
+  }
 
   function confirmDeleteAttachment() {
     if (attachmentPendingDelete) onDeleteAttachment?.(message.id, attachmentPendingDelete);
@@ -82,10 +96,16 @@ function MessageRowComponent({
   }
 
   return (
-    <div
+    // 삭제되면 높이를 접으며 흐려져 아래 메시지가 끊김 없이 올라온다(chat-room의 AnimatePresence).
+    // overflow-hidden은 exit 동안에만 건다 — 평소엔 행 위로 걸친 호버 툴바(-top-3)가 잘리면 안 된다.
+    <motion.div
+      aria-busy={isDeleting || undefined}
+      animate={{ opacity: isDeleting ? 0.5 : 1 }}
+      exit={{ opacity: 0, height: 0, paddingTop: 0, paddingBottom: 0, overflow: "hidden", transition: SPRING.exit }}
+      transition={FADE}
       className={`group relative flex gap-3 px-4 transition-colors hover:bg-zinc-800/40 ${
         isGrouped ? "py-0.5" : "pt-3 pb-0.5"
-      }`}
+      } ${isDeleting ? "pointer-events-none" : ""}`}
     >
       <div className="flex w-9 shrink-0 items-start justify-center">
         {isGrouped ? (
@@ -232,6 +252,13 @@ function MessageRowComponent({
         onConfirm={confirmDeleteAttachment}
       />
 
+      <DeleteConfirmModal
+        open={isConfirmingMessageDelete}
+        itemLabel={message.attachments?.length ? "이 메시지와 첨부파일" : "이 메시지"}
+        onCancel={() => setIsConfirmingMessageDelete(false)}
+        onConfirm={confirmDeleteMessage}
+      />
+
       <div className="pointer-events-none absolute -top-3 right-4 flex items-center gap-0.5 rounded-md border border-zinc-700 bg-zinc-900 p-0.5 opacity-0 shadow-md transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
         <button
           type="button"
@@ -247,6 +274,17 @@ function MessageRowComponent({
         >
           <MessageSquare className="h-4 w-4" />
         </button>
+        {canDeleteMessage && (
+          <button
+            type="button"
+            title="메시지 삭제"
+            aria-label="메시지 삭제"
+            onClick={() => setIsConfirmingMessageDelete(true)}
+            className="rounded p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-red-400"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
         <button
           type="button"
           title="더 보기"
@@ -255,7 +293,7 @@ function MessageRowComponent({
           <MoreHorizontal className="h-4 w-4" />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
 

@@ -8,6 +8,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from "react";
+import { AnimatePresence } from "framer-motion";
 import { AlertTriangle, AtSign, Hash, Paperclip, Plus, Send, X } from "lucide-react";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { formatChatTimestamp } from "@/lib/format";
@@ -269,36 +270,41 @@ export function ChatRoom({
           </div>
         ) : messages.length > 0 ? (
           <>
-            {messages.map((message, index) => {
-              const isGrouped =
-                index > 0 && messages[index - 1].author.name === message.author.name;
-              const liveAttachments = supabaseMode ? uploads.attachmentsByMessageId.get(message.id) : undefined;
-              const hasRemoved = message.attachments?.some((a) => uploads.removedAttachmentIds.has(a.id));
-              // liveAttachments도 삭제된 것도 없으면 message를 그대로 재사용한다 — 매 렌더마다
-              // 새 객체를 만들면 MessageRow(memo)가 이 메시지의 실제 변경 없이도 다시 렌더된다.
-              const rowMessage =
-                (liveAttachments && liveAttachments.length > 0) || hasRemoved
-                  ? {
-                      ...message,
-                      attachments: [...(message.attachments ?? []), ...(liveAttachments ?? [])].filter(
-                        (attachment) => !uploads.removedAttachmentIds.has(attachment.id)
-                      ),
-                    }
-                  : message;
-
-              return (
-                <MessageRow
-                  key={message.id}
-                  message={rowMessage}
-                  isGrouped={isGrouped}
-                  pendingAttachments={supabaseMode ? uploads.pendingUploadsByMessageId.get(message.id) : undefined}
-                  onRetryAttachment={supabaseMode ? uploads.retryAttachmentUpload : undefined}
-                  currentUserId={supabaseMode ? currentUser.id : undefined}
-                  attachmentDeleteState={supabaseMode ? uploads.attachmentDeleteState : undefined}
-                  onDeleteAttachment={supabaseMode ? uploads.deleteAttachment : undefined}
-                />
-              );
-            })}
+            {/* channelId 키: 채널을 바꿀 때 이전 채널 메시지들이 한꺼번에 exit하지 않고 통째로 교체된다. */}
+            <AnimatePresence key={channelId} initial={false}>
+              {messages.map((message, index) => {
+                const isGrouped =
+                  index > 0 && messages[index - 1].author.name === message.author.name;
+                const liveAttachments = supabaseMode ? uploads.attachmentsByMessageId.get(message.id) : undefined;
+                const hasRemoved = message.attachments?.some((a) => uploads.removedAttachmentIds.has(a.id));
+                // liveAttachments도 삭제된 것도 없으면 message를 그대로 재사용한다 — 매 렌더마다
+                // 새 객체를 만들면 MessageRow(memo)가 이 메시지의 실제 변경 없이도 다시 렌더된다.
+                const rowMessage =
+                  (liveAttachments && liveAttachments.length > 0) || hasRemoved
+                    ? {
+                        ...message,
+                        attachments: [...(message.attachments ?? []), ...(liveAttachments ?? [])].filter(
+                          (attachment) => !uploads.removedAttachmentIds.has(attachment.id)
+                        ),
+                      }
+                    : message;
+  
+                return (
+                  <MessageRow
+                    key={message.id}
+                    message={rowMessage}
+                    isGrouped={isGrouped}
+                    pendingAttachments={supabaseMode ? uploads.pendingUploadsByMessageId.get(message.id) : undefined}
+                    onRetryAttachment={supabaseMode ? uploads.retryAttachmentUpload : undefined}
+                    currentUserId={supabaseMode ? currentUser.id : undefined}
+                    attachmentDeleteState={supabaseMode ? uploads.attachmentDeleteState : undefined}
+                    onDeleteAttachment={supabaseMode ? uploads.deleteAttachment : undefined}
+                    onDeleteMessage={supabaseMode ? supabaseChat.deleteMessage : undefined}
+                    isDeleting={supabaseMode && supabaseChat.deletingMessageIds.has(message.id)}
+                  />
+                );
+              })}
+            </AnimatePresence>
             <div ref={scrollAnchorRef} />
           </>
         ) : (

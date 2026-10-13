@@ -4,7 +4,7 @@ import type { ChatChannel } from "@/lib/store/chat-store";
 import { formatChatTimestamp } from "@/lib/format";
 import type { ChatMessageRow, Database } from "../schema";
 import { mapChatChannelRowToChatChannel, mapChatMessageRowToChatMessage } from "../mappers";
-import { listAttachmentsForTargets } from "./attachments";
+import { deleteAttachmentsForTarget, listAttachmentsForTargets } from "./attachments";
 import { fetchUsersById } from "./users";
 
 type Client = SupabaseClient<Database>;
@@ -161,4 +161,20 @@ export async function sendMessage(
     timestamp: formatChatTimestamp(new Date(data.created_at)),
     senderId,
   };
+}
+
+/**
+ * 메시지와 그 첨부를 함께 지운다. 첨부를 먼저 정리한다 — 첨부 삭제 RLS
+ * (is_chat_attachment_deletable)가 "이 메시지의 발신자인가"를 메시지 행으로
+ * 판정하므로, 메시지를 먼저 지우면 첨부를 지울 권한 판정 근거가 사라진다.
+ * 권한 경계는 chat_messages_delete_self RLS(활성 프로젝트의 본인 메시지만)이고,
+ * RLS는 거부 대신 0행을 조용히 거르므로 삭제된 행이 없으면 오류로 바꾼다.
+ */
+export async function deleteMessage(supabase: Client, messageId: string): Promise<void> {
+  await deleteAttachmentsForTarget(supabase, "chat_message", messageId);
+  const { data, error } = await supabase.from("chat_messages").delete().eq("id", messageId).select("id");
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error("메시지를 삭제할 수 없습니다. 본인 메시지인지, 보관된 프로젝트가 아닌지 확인해주세요.");
+  }
 }
