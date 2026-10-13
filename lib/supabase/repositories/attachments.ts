@@ -115,12 +115,13 @@ export async function uploadAttachment(
 
   const storagePath = buildStoragePath(ctx.projectId, ctx.id, ctx.file.name);
 
+  // 성공하면 진행률을 100%로 둔다 — 지우면 칩이 사라지기 직전 "업로드 중..."으로 깜빡인다.
+  // 정리는 표시하던 UploadingLabel이 언마운트될 때 한다. 실패하면 바로 지워 재시도가 0%부터 보이게 한다.
   try {
     await uploadResumable(supabase, storagePath, ctx.file, (fraction) => reportUploadProgress(ctx.id, fraction));
   } catch {
-    throw new Error(`파일 업로드에 실패했습니다: ${ctx.file.name}`);
-  } finally {
     clearUploadProgress(ctx.id);
+    throw new Error(`파일 업로드에 실패했습니다: ${ctx.file.name}`);
   }
 
   const { error: insertError } = await supabase.from("attachments").insert({
@@ -137,6 +138,7 @@ export async function uploadAttachment(
   });
 
   if (insertError) {
+    clearUploadProgress(ctx.id);
     await supabase.storage.from(ATTACHMENTS_BUCKET).remove([storagePath]);
     throw new Error(`파일 정보를 저장하지 못해 업로드를 취소했습니다: ${ctx.file.name}`);
   }
