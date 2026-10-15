@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import type { BugSeverity, BugStatus } from "@/lib/types";
 import { Select } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 export type SeverityFilter = BugSeverity | "ALL";
 export type StatusFilter = BugStatus | "ALL";
@@ -77,21 +78,7 @@ export function BugToolbar({
 
       <label className="flex shrink-0 items-center gap-2 text-sm text-zinc-400">
         해결됨 숨기기
-        <button
-          type="button"
-          role="switch"
-          aria-checked={hideResolved}
-          onClick={() => onHideResolvedChange(!hideResolved)}
-          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors ${
-            hideResolved ? "bg-cyan-500" : "bg-zinc-700"
-          }`}
-        >
-          <span
-            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform duration-200 ease-in-out ${
-              hideResolved ? "translate-x-5" : "translate-x-0"
-            }`}
-          />
-        </button>
+        <Switch checked={hideResolved} onChange={onHideResolvedChange} />
       </label>
     </div>
   );

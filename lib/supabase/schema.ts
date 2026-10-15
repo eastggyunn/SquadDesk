@@ -11,7 +11,7 @@
 // 상태/우선순위/심각도 등의 열거형은 lib/types.ts와 DB가 동일한 용어를
 // 쓰도록 마이그레이션에서 맞췄으므로(BugSeverity의 'Blocker' 등), 두 곳에
 // 같은 유니온을 따로 적어 드리프트가 생기지 않도록 여기서 재수출한다.
-import type { AttachmentKind, BugSeverity, BugStatus, TaskPriority, TaskStatus } from "@/lib/types";
+import type { AttachmentKind, BugSeverity, BugStatus, NotificationKind, TaskPriority, TaskStatus } from "@/lib/types";
 
 export type JobRole = "Programmer" | "Artist" | "Animator" | "Designer" | "Sound" | "QA" | "PM";
 
@@ -142,6 +142,7 @@ export type ChatMessageRow = {
   task_id: string | null;
   sender_id: string | null;
   content: string;
+  mentioned_user_ids: string[];
   created_at: string;
   updated_at: string;
 };
@@ -256,12 +257,46 @@ export type NotificationRow = {
   id: string;
   user_id: string;
   project_id: string;
-  kind: "task_comment_mention";
+  kind: NotificationKind;
   actor_id: string | null;
   task_id: string | null;
+  bug_id: string | null;
   comment_id: string | null;
+  channel_id: string | null;
+  message_id: string | null;
+  detail: string | null;
   read_at: string | null;
+  emailed_at: string | null;
   created_at: string;
+};
+
+// 00000000000028(29에서 project_id 추가) — list_notification_digest() 한 행(받는 사람 × 알림).
+export type NotificationDigestRow = {
+  notification_id: string;
+  user_id: string;
+  email: string;
+  recipient_name: string;
+  kind: NotificationKind;
+  actor_name: string | null;
+  project_id: string;
+  project_name: string;
+  task_id: string | null;
+  task_title: string | null;
+  bug_id: string | null;
+  bug_title: string | null;
+  channel_id: string | null;
+  channel_name: string | null;
+  excerpt: string | null;
+  detail: string | null;
+  created_at: string;
+};
+
+// 00000000000028_notification_center.sql — 행이 없으면 모든 종류가 켜진 것이다.
+export type NotificationPreferencesRow = {
+  user_id: string;
+  muted_kinds: NotificationKind[];
+  email_muted_kinds: NotificationKind[];
+  updated_at: string;
 };
 
 // __InternalSupabase는 최신 @supabase/postgrest-js가 클라이언트 옵션(PostgREST
@@ -283,6 +318,7 @@ export type Database = {
       tasks: Table<TaskRow>;
       task_comments: Table<TaskCommentRow>;
       notifications: Table<NotificationRow>;
+      notification_preferences: Table<NotificationPreferencesRow>;
       bugs: Table<BugRow>;
       chat_channels: Table<ChatChannelRow>;
       chat_messages: Table<ChatMessageRow>;
@@ -350,6 +386,19 @@ export type Database = {
       assert_can_delete_chat_attachment: {
         Args: { p_attachment_id: string };
         Returns: string | null;
+      };
+      // 00000000000028_notification_center.sql — 하루 한 번 크론(service_role)만 부른다.
+      generate_due_soon_notifications: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      list_notification_digest: {
+        Args: Record<string, never>;
+        Returns: NotificationDigestRow[];
+      };
+      mark_notifications_emailed: {
+        Args: { p_ids: string[] };
+        Returns: undefined;
       };
     };
     Enums: {};

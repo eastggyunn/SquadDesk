@@ -12,7 +12,7 @@ interface UseSupabaseChatMessagesResult {
   error: string | null;
   realtimeError: string | null;
   /** 채널/프로젝트/로그인 사용자 중 하나라도 없으면 아무 것도 하지 않고 null을 반환한다. */
-  sendMessage: (content: string) => Promise<ChatMessage | null>;
+  sendMessage: (content: string, mentionedUserIds?: string[]) => Promise<ChatMessage | null>;
   /** 이전 전송이 아직 서버 응답을 기다리는 중이면 true — 호출부는 이 동안 새 전송을 막아야 한다. */
   isSending: boolean;
   retryRealtime: () => void;
@@ -124,7 +124,7 @@ export function useSupabaseChatMessages(
     };
   }, [channelId, retryToken]);
 
-  async function sendMessage(content: string): Promise<ChatMessage | null> {
+  async function sendMessage(content: string, mentionedUserIds: string[] = []): Promise<ChatMessage | null> {
     if (!channelId || !projectId || !currentUserId) return null;
     if (isSendingRef.current) return null;
 
@@ -139,7 +139,8 @@ export function useSupabaseChatMessages(
         channelId,
         currentUserId,
         currentUserAssignee,
-        content
+        content,
+        mentionedUserIds
       );
       // realtime INSERT 이벤트가 되돌아오기 전에 seenIds에 먼저 등록해 중복 표시를 막는다.
       seenIds.current.add(message.id);

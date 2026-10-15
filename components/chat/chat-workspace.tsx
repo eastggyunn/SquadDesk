@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useChatStore, GENERAL_CHANNEL_ID } from "@/lib/store/chat-store";
 import { HydrationGate } from "@/components/ui/hydration-gate";
 import { MOCK_MESSAGES } from "@/lib/mock-messages";
@@ -12,7 +13,7 @@ import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { ChannelSidebar } from "./channel-sidebar";
 import { ChatRoom } from "./chat-room";
 
-export function ChatWorkspace() {
+export function ChatWorkspace({ deepLinkChannelId }: { deepLinkChannelId: string | null }) {
   const supabaseMode = isSupabaseConfigured();
   const currentUser = useCurrentUser();
   const { activeProject } = useActiveProject();
@@ -29,15 +30,19 @@ export function ChatWorkspace() {
 
   const channels = supabaseMode ? supabaseChannels.channels : mockChannels;
 
-  const [activeChannelId, setActiveChannelId] = useState<string>(GENERAL_CHANNEL_ID);
+  const [activeChannelId, setActiveChannelId] = useState<string>(deepLinkChannelId ?? GENERAL_CHANNEL_ID);
 
-  // 활성 채널이 보관되었거나 목록에 없으면(전환 직후 등) 첫 채널로 되돌린다.
+  // 알림에서 /chat?channel=<id>로 들어오면 채널 목록이 들어온 뒤 그 채널을 열고 주소에서 지운다
+  // (kanban의 ?task와 같은 방식). 이미 /chat에 있다가 들어와도 열리도록 effect로 맞춘다.
+  const router = useRouter();
   useEffect(() => {
-    if (channels.length === 0) return;
-    if (channels.some((channel) => channel.id === activeChannelId)) return;
-    setActiveChannelId(channels[0].id);
-  }, [channels, activeChannelId]);
+    if (!deepLinkChannelId) return;
+    if (!channels.some((channel) => channel.id === deepLinkChannelId)) return;
+    setActiveChannelId(deepLinkChannelId);
+    router.replace("/chat", { scroll: false });
+  }, [deepLinkChannelId, channels, router]);
 
+  // 활성 채널이 보관되었거나 목록에 없으면(전환 직후 등) 첫 채널을 보여준다.
   const activeChannel = channels.find((channel) => channel.id === activeChannelId) ?? channels[0];
 
   async function handleAddChannel(name: string): Promise<boolean> {

@@ -15,6 +15,11 @@ export interface MentionMember {
 /** 목업 모드의 멘션 후보 — 데모에는 사용자 id가 없어 이름을 id로 쓴다. */
 export const MOCK_MENTION_MEMBERS: MentionMember[] = MOCK_TEAM_MEMBERS.map((name) => ({ id: name, name }));
 
+/** 본문에 "@이름"이 남아 있는 멤버만 멘션으로 본다(지운 멘션은 빠진다). DB 트리거가 멤버십을 다시 거른다. */
+export function extractMentionedIds(content: string, members: MentionMember[]): string[] {
+  return members.filter((member) => content.includes(`@${member.name}`)).map((member) => member.id);
+}
+
 interface MentionPopoverProps {
   open: boolean;
   onClose: () => void;

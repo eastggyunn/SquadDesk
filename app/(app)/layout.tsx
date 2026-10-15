@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { NoProjectBanner } from "@/components/layout/no-project-banner";
 import { TopBar } from "@/components/layout/top-bar";
 import { DepthContainer } from "@/components/layout/depth-container";
 import { UploadLeaveGuard } from "@/components/layout/upload-leave-guard";
+import { ProjectFromUrl } from "@/components/layout/project-from-url";
 import { CurrentUserProvider } from "@/components/providers/current-user-provider";
 import { getCurrentUser } from "@/lib/supabase/current-user";
 
@@ -12,6 +14,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <CurrentUserProvider value={currentUser}>
       <UploadLeaveGuard />
+      <Suspense>
+        <ProjectFromUrl />
+      </Suspense>
       <DepthContainer>
       <div className="flex min-h-screen">
         <Sidebar currentUser={currentUser} />

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import type { Bug, BugStatus } from "@/lib/types";
 import { useBugsStore } from "@/lib/store/bugs-store";
@@ -25,7 +26,7 @@ interface FormState {
   bug?: Bug;
 }
 
-export function BugBoard() {
+export function BugBoard({ deepLinkBugId }: { deepLinkBugId: string | null }) {
   const supabaseMode = isSupabaseConfigured();
   const currentUser = useCurrentUser();
   const { activeProject } = useActiveProject();
@@ -53,6 +54,16 @@ export function BugBoard() {
   const [hideResolved, setHideResolved] = useState(false);
   const [formState, setFormState] = useState<FormState | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  // 알림에서 /bugs?bug=<id>로 들어오면 버그가 목록에 들어온 뒤 그 서랍을 한 번 열고 주소에서 지운다.
+  const router = useRouter();
+  useEffect(() => {
+    if (!deepLinkBugId) return;
+    const bug = bugs.find((candidate) => candidate.id === deepLinkBugId);
+    if (!bug) return;
+    setFormState({ mode: "edit", bug });
+    router.replace("/bugs", { scroll: false });
+  }, [deepLinkBugId, bugs, router]);
 
   const { handleFormSubmit, handleDeleteConfirmed } = useBugFormActions({
     supabaseMode,

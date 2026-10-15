@@ -12,7 +12,12 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { useSupabaseTaskComments } from "@/lib/supabase/hooks/use-supabase-task-comments";
 import { useTaskCommentsStore } from "@/lib/store/task-comments-store";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
-import { MentionPopover, MOCK_MENTION_MEMBERS, type MentionMember } from "@/components/chat/mention-popover";
+import {
+  extractMentionedIds,
+  MentionPopover,
+  MOCK_MENTION_MEMBERS,
+  type MentionMember,
+} from "@/components/chat/mention-popover";
 import { DeleteConfirmModal } from "./delete-confirm-modal";
 
 interface TaskCommentsProps {
@@ -124,8 +129,7 @@ export function TaskComments({ taskId, projectId, projectMembers }: TaskComments
   async function submit() {
     const content = draft.trim();
     if (!content || isSubmitting) return;
-    // 본문에 "@이름"이 남아 있는 멤버만 멘션으로 보낸다(지운 멘션은 빠진다). DB 트리거가 멤버십을 다시 거른다.
-    const mentionedIds = members.filter((member) => content.includes(`@${member.name}`)).map((member) => member.id);
+    const mentionedIds = extractMentionedIds(content, members);
     if (!supabaseMode) {
       mockAdd({ taskId, author: currentUser.assignee, content, mentionedUserIds: mentionedIds });
       setDraft("");

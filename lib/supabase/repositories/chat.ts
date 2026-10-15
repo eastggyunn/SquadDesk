@@ -145,11 +145,19 @@ export async function sendMessage(
   channelId: string,
   senderId: string,
   senderAssignee: Assignee,
-  content: string
+  content: string,
+  mentionedUserIds: string[] = []
 ): Promise<ChatMessage> {
   const { data, error } = await supabase
     .from("chat_messages")
-    .insert({ project_id: projectId, channel_id: channelId, sender_id: senderId, content })
+    .insert({
+      project_id: projectId,
+      channel_id: channelId,
+      sender_id: senderId,
+      content,
+      // 00000000000028 트리거가 이 id들 중 프로젝트 멤버에게만 chat_mention 알림을 만든다.
+      mentioned_user_ids: mentionedUserIds,
+    })
     .select("*")
     .single();
   if (error) throw error;

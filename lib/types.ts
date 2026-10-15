@@ -82,15 +82,34 @@ export interface TaskComment {
   mentionedUserIds: string[];
 }
 
-/** 상단 종 아이콘의 알림 한 건. 지금은 작업 댓글 멘션 한 종류뿐이다. */
+/** 알림 종류. supabase/migrations/…28_notification_center.sql의 notifications_kind_check와 같다. */
+export type NotificationKind =
+  | "task_comment_mention"
+  | "task_comment"
+  | "chat_mention"
+  | "task_assigned"
+  | "bug_assigned"
+  | "task_status_changed"
+  | "bug_status_changed"
+  | "task_due_soon";
+
+/** 상단 종 아이콘의 알림 한 건. 대상(작업/버그/채널)은 종류에 따라 하나만 채워진다. */
 export interface AppNotification {
   id: string;
-  kind: "task_comment_mention";
+  kind: NotificationKind;
   projectId: string;
-  actorName: string;
+  /** 행동한 사람. 마감 임박처럼 시스템이 만든 알림은 null이다. */
+  actorName: string | null;
   taskId: string | null;
   taskTitle: string | null;
-  commentExcerpt: string | null;
+  bugId: string | null;
+  bugTitle: string | null;
+  channelId: string | null;
+  channelName: string | null;
+  /** 댓글/메시지 본문 앞부분. */
+  excerpt: string | null;
+  /** 상태 변경이면 바뀐 상태, 마감 임박이면 마감일(YYYY-MM-DD). */
+  detail: string | null;
   createdAt: string;
   isRead: boolean;
 }

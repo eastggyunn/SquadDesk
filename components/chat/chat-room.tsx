@@ -20,7 +20,7 @@ import { useChatAttachmentUploads, type FileToSend } from "@/lib/supabase/hooks/
 import type { ProjectMemberOption } from "@/lib/supabase/repositories/project-members";
 import { MessageRow } from "./message-row";
 import { EmojiPopover } from "./emoji-popover";
-import { MentionPopover, MOCK_MENTION_MEMBERS, type MentionMember } from "./mention-popover";
+import { extractMentionedIds, MentionPopover, MOCK_MENTION_MEMBERS, type MentionMember } from "./mention-popover";
 
 interface ChatRoomProps {
   channelName: string;
@@ -105,7 +105,7 @@ export function ChatRoom({
           if (file) filesToSend.push({ attachment, file });
         }
 
-        const message = await supabaseChat.sendMessage(content);
+        const message = await supabaseChat.sendMessage(content, extractMentionedIds(content, mentionMembers));
         // 전송 실패 — 오류는 훅이 이미 세팅했다. draft/첨부를 지우지 않아 재시도할 수 있게 한다.
         if (!message) return;
 
