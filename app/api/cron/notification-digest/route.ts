@@ -57,31 +57,37 @@ function renderDigest(rows: NotificationDigestRow[], siteUrl: string): { subject
   return { subject: `[SquadDesk] 읽지 않은 알림 ${rows.length}건`, html };
 }
 
+/** 결과를 응답하면서 같은 내용을 한 줄 로그로 남긴다 — Vercel Logs에서 매일 실행 결과를 확인하려고. */
+function respond(body: Record<string, unknown>, status = 200) {
+  (status === 200 ? console.log : console.error)(`[notification-digest] ${status} ${JSON.stringify(body)}`);
+  return NextResponse.json(body, { status });
+}
+
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    return respond({ error: "unauthorized" }, 401);
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다." }, { status: 500 });
+    return respond({ error: "SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다." }, 500);
   }
   const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
   const dueSoon = await supabase.rpc("generate_due_soon_notifications");
-  if (dueSoon.error) return NextResponse.json({ error: dueSoon.error.message }, { status: 500 });
+  if (dueSoon.error) return respond({ error: dueSoon.error.message }, 500);
 
   const resendKey = process.env.RESEND_API_KEY;
   const from = process.env.NOTIFICATION_EMAIL_FROM;
   if (!resendKey || !from) {
     // 메일 설정 전에도 마감 임박 알림(앱 안)은 만들어지도록 여기서 멈춘다.
-    return NextResponse.json({ dueSoon: dueSoon.data, emailed: 0, skipped: "RESEND_API_KEY/NOTIFICATION_EMAIL_FROM 미설정" });
+    return respond({ dueSoon: dueSoon.data, emailed: 0, skipped: "RESEND_API_KEY/NOTIFICATION_EMAIL_FROM 미설정" });
   }
 
   const digest = await supabase.rpc("list_notification_digest");
-  if (digest.error) return NextResponse.json({ error: digest.error.message }, { status: 500 });
+  if (digest.error) return respond({ error: digest.error.message }, 500);
 
   const byUser = new Map<string, NotificationDigestRow[]>();
   for (const row of digest.data ?? []) {
@@ -112,10 +118,10 @@ export async function GET(request: NextRequest) {
 
   if (sentIds.length > 0) {
     const marked = await supabase.rpc("mark_notifications_emailed", { p_ids: sentIds });
-    if (marked.error) return NextResponse.json({ error: marked.error.message }, { status: 500 });
+    if (marked.error) return respond({ error: marked.error.message }, 500);
   }
 
-  return NextResponse.json({
+  return respond({
     dueSoon: dueSoon.data,
     recipients: byUser.size,
     emailed: sentIds.length,
