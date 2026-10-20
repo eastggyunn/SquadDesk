@@ -105,7 +105,8 @@ function GanttChartComponent({ tasks, viewMode, range, onSelectTask, expandedTas
           />
         ))}
 
-        <div className="absolute inset-y-0 z-20 w-px bg-blue-500" style={{ left: todayX }} />
+        {/* 막대 위에는 오되, 날짜 헤더(z-10)와 왼쪽 고정 작업 목록(z-20) 아래로 지나가야 가로·세로 스크롤 때 그 위를 가리지 않는다. */}
+        <div className="absolute inset-y-0 z-[5] w-px bg-blue-500" style={{ left: todayX }} />
 
         {taskLayouts.map(({ task, layout }) => (
           <div key={task.id} className="relative border-b border-zinc-800/60" style={{ height: ROW_HEIGHT }}>
