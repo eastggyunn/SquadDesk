@@ -16,6 +16,8 @@ export interface ProjectSummary {
 export interface CurrentUser {
   id: string;
   email: string | null;
+  /** 익명 로그인한 게스트 체험 사용자인지(00000000000030_guest_sandbox.sql). */
+  isGuest: boolean;
   assignee: Assignee;
   /** 로그인 사용자가 속한 프로젝트 목록(보관된 것 포함). 활성 프로젝트가 하나도 없으면 "아직 배정된 프로젝트가 없습니다" 상태를 보여준다. */
   projects: ProjectSummary[];
@@ -52,6 +54,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   return {
     id: user.id,
     email: user.email ?? null,
+    isGuest: user.is_anonymous === true,
     assignee: mapUserRowToAssignee(profile, { name: fallbackName, role: "Member" }),
     projects: (projectRows ?? []).map((project) => ({
       id: project.id,

@@ -400,6 +400,16 @@ export type Database = {
         Args: { p_ids: string[] };
         Returns: undefined;
       };
+      // 00000000000030_guest_sandbox.sql — 게스트 샘플 프로젝트 생성(익명 사용자 본인만)과
+      // 오래된 게스트 정리(크론 service_role 전용, 지운 첨부의 storage 경로를 돌려준다).
+      seed_guest_workspace: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
+      purge_stale_guests: {
+        Args: { p_older_than?: string };
+        Returns: string[];
+      };
     };
     Enums: {};
     CompositeTypes: {};

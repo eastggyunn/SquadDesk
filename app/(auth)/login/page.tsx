@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
+import { GuestLoginButton } from "@/components/auth/guest-login-button";
 import { withRedirectTo } from "@/lib/supabase/redirect";
 
 export default function LoginPage({
@@ -17,6 +18,14 @@ export default function LoginPage({
       <div className="mt-6">
         <LoginForm redirectTo={searchParams.redirectTo} />
       </div>
+
+      <div className="my-6 flex items-center gap-3 text-xs text-zinc-600">
+        <span className="h-px flex-1 bg-zinc-800" />
+        또는
+        <span className="h-px flex-1 bg-zinc-800" />
+      </div>
+
+      <GuestLoginButton />
 
       <p className="mt-6 text-center text-sm text-zinc-500">
         계정이 없으신가요?{" "}

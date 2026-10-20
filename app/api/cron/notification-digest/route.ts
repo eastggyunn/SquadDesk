@@ -79,6 +79,15 @@ export async function GET(request: NextRequest) {
   const dueSoon = await supabase.rpc("generate_due_soon_notifications");
   if (dueSoon.error) return respond({ error: dueSoon.error.message }, 500);
 
+  // 같은 하루 한 번 크론에 얹어 오래된 게스트 샌드박스를 지운다. DB 행은 함수가 지우고,
+  // 돌려받은 첨부 경로는 여기서 Storage에서 지운다(Storage는 SQL로 지울 수 없다).
+  const purged = await supabase.rpc("purge_stale_guests");
+  if (purged.error) return respond({ error: purged.error.message }, 500);
+  const purgedPaths = purged.data ?? [];
+  for (let start = 0; start < purgedPaths.length; start += 1000) {
+    await supabase.storage.from("attachments").remove(purgedPaths.slice(start, start + 1000));
+  }
+
   const resendKey = process.env.RESEND_API_KEY;
   const from = process.env.NOTIFICATION_EMAIL_FROM;
   if (!resendKey || !from) {

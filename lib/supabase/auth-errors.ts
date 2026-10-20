@@ -5,6 +5,7 @@ const KNOWN_MESSAGES: Record<string, string> = {
   "Password should be at least 6 characters": "비밀번호는 최소 6자 이상이어야 합니다.",
   "Unable to validate email address: invalid format": "올바른 이메일 형식이 아닙니다.",
   "signups not allowed for this instance": "현재 이 프로젝트는 회원가입이 허용되지 않습니다.",
+  "Anonymous sign-ins are disabled": "지금은 게스트 체험을 사용할 수 없습니다.",
 };
 
 /** Supabase Auth 에러 메시지를 화면에 그대로 노출 가능한 한국어 문장으로 바꾼다. */

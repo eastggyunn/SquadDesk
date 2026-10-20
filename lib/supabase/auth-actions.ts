@@ -83,6 +83,26 @@ export async function signup(_prevState: AuthFormState, formData: FormData): Pro
   redirect(redirectTo);
 }
 
+export async function loginAsGuest(): Promise<AuthFormState> {
+  const supabase = tryCreateServerSupabaseClient();
+  if (!supabase) return SUPABASE_NOT_CONFIGURED_ERROR;
+
+  // 게스트마다 별도 익명 사용자를 만든다 — 방문자끼리 데이터가 섞이지 않는다(00000000000030_guest_sandbox.sql).
+  const { error } = await supabase.auth.signInAnonymously({ options: { data: { name: "게스트" } } });
+  if (error) {
+    return { error: translateAuthError(error.message), message: null };
+  }
+
+  // 샘플 프로젝트 없이 들어가면 빈 화면뿐이다 — 시드에 실패하면 세션을 되돌려 다시 시도할 수 있게 한다.
+  const { error: seedError } = await supabase.rpc("seed_guest_workspace");
+  if (seedError) {
+    await supabase.auth.signOut();
+    return { error: "게스트 체험 공간을 준비하지 못했습니다. 잠시 후 다시 시도해주세요.", message: null };
+  }
+
+  redirect("/");
+}
+
 export async function logout(): Promise<void> {
   const supabase = tryCreateServerSupabaseClient();
   if (!supabase) {

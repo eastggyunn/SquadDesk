@@ -26,7 +26,7 @@ export function Sidebar({ currentUser }: { currentUser: CurrentUser | null }) {
   const openBugCount = useOpenBugCount();
   const hasMounted = useHasMounted();
   const displayName = currentUser?.assignee.name ?? "게스트";
-  const displayRole = currentUser?.assignee.role ?? "-";
+  const displayRole = currentUser?.isGuest ? "게스트 체험 중" : (currentUser?.assignee.role ?? "-");
   const initials = displayName.slice(0, 1);
 
   async function handleLogout() {
