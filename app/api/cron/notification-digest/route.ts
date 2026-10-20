@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import type { Database, NotificationDigestRow } from "@/lib/supabase/schema";
+import type { NotificationDigestRow } from "@/lib/supabase/schema";
+import { tryCreateServiceSupabaseClient } from "@/lib/supabase/service";
 import { describeNotification, notificationHref } from "@/lib/notifications";
 
 // 매일 Vercel Cron(vercel.json, 00:00 UTC = 오전 9시 KST)이 부른다.
@@ -69,12 +69,10 @@ export async function GET(request: NextRequest) {
     return respond({ error: "unauthorized" }, 401);
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) {
+  const supabase = tryCreateServiceSupabaseClient();
+  if (!supabase) {
     return respond({ error: "SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다." }, 500);
   }
-  const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
   const dueSoon = await supabase.rpc("generate_due_soon_notifications");
   if (dueSoon.error) return respond({ error: dueSoon.error.message }, 500);

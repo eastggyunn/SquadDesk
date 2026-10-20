@@ -5,7 +5,7 @@ import type { Database } from "./schema";
 // /invite도 보호 대상이다 — 미로그인 상태로 초대 링크를 열면 redirectTo를 달고
 // /login으로 보내, 로그인/회원가입 후 같은 초대 화면으로 되돌아오게 한다.
 /** 로그인하지 않으면 접근할 수 없는 기존 앱 경로. */
-const PROTECTED_PATHS = ["/", "/kanban", "/bugs", "/chat", "/domains", "/schedule", "/members", "/invite"];
+const PROTECTED_PATHS = ["/", "/kanban", "/bugs", "/chat", "/domains", "/schedule", "/members", "/builds", "/invite"];
 /** 이미 로그인한 사용자는 접근할 필요가 없는 경로. */
 const AUTH_PATHS = ["/login", "/signup"];
 

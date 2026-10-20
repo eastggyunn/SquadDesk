@@ -265,6 +265,8 @@ export type NotificationRow = {
   channel_id: string | null;
   message_id: string | null;
   detail: string | null;
+  /** 00000000000031_github_builds.sql — build_ready / build_linked 알림의 빌드. */
+  build_id: string | null;
   read_at: string | null;
   emailed_at: string | null;
   created_at: string;
@@ -299,6 +301,75 @@ export type NotificationPreferencesRow = {
   updated_at: string;
 };
 
+// 00000000000031_github_builds.sql — GitHub 빌드 연동. 설치·연결·빌드 행은 서버(service_role)만 만든다.
+export type GitHubAccountType = "User" | "Organization";
+
+export type GitHubInstallationRow = {
+  installation_id: number;
+  account_login: string;
+  account_type: GitHubAccountType;
+  suspended_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GitHubInstallationAccessRow = {
+  installation_id: number;
+  user_id: string;
+  verified_at: string;
+};
+
+export type BuildSourceSetting = "artifact" | "release" | "both";
+export type BuildSource = "artifact" | "release";
+
+export type ProjectRepositoryRow = {
+  id: string;
+  project_id: string;
+  provider: "github";
+  installation_id: number;
+  repo_id: number;
+  repo_full_name: string;
+  build_source: BuildSourceSetting;
+  workflow_path: string | null;
+  branch_filter: string | null;
+  connected_by: string | null;
+  disconnected_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BuildRow = {
+  id: string;
+  project_id: string;
+  repository_id: string;
+  source: BuildSource;
+  name: string;
+  version_label: string;
+  branch: string | null;
+  commit_sha: string | null;
+  commit_message: string | null;
+  actor_login: string | null;
+  size_bytes: number | null;
+  github_run_id: number | null;
+  github_artifact_id: number | null;
+  github_release_id: number | null;
+  github_asset_id: number | null;
+  html_url: string;
+  expires_at: string | null;
+  expired_at: string | null;
+  created_at: string;
+};
+
+export type BuildLinkRow = {
+  id: string;
+  project_id: string;
+  build_id: string;
+  task_id: string | null;
+  sprint_id: string | null;
+  linked_by: string | null;
+  created_at: string;
+};
+
 // __InternalSupabase는 최신 @supabase/postgrest-js가 클라이언트 옵션(PostgREST
 // 버전 등)을 읽는 자리다. Tables/Views와 함께 Functions/Enums/CompositeTypes
 // 네 키를 전부 채워 GenericSchema 제약을 명확히 만족시킨다 — 하나라도 비면
@@ -325,6 +396,11 @@ export type Database = {
       attachments: Table<AttachmentRow>;
       asset_categories: Table<AssetCategoryRow>;
       asset_syncs: Table<AssetSyncRow>;
+      github_installations: Table<GitHubInstallationRow>;
+      github_installation_access: Table<GitHubInstallationAccessRow>;
+      project_repositories: Table<ProjectRepositoryRow>;
+      builds: Table<BuildRow>;
+      build_links: Table<BuildLinkRow>;
     };
     Views: {
       latest_asset_syncs: View<AssetSyncRow>;

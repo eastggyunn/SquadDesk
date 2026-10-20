@@ -7,6 +7,8 @@ import type { ProjectSummary } from "@/lib/supabase/current-user";
 export interface CurrentUserContextValue {
   id: string | null;
   email: string | null;
+  /** 익명 로그인한 게스트 체험 사용자인지. 게스트에게 막힌 기능(GitHub 연결 등)의 안내에 쓴다. */
+  isGuest: boolean;
   assignee: Assignee;
   projects: ProjectSummary[];
 }
@@ -15,6 +17,7 @@ export interface CurrentUserContextValue {
 const GUEST_VALUE: CurrentUserContextValue = {
   id: null,
   email: null,
+  isGuest: false,
   assignee: { name: "나", role: "PM" },
   projects: [],
 };
