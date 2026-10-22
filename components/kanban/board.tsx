@@ -28,6 +28,7 @@ import { useSprints } from "@/lib/hooks/use-sprints";
 import { useHasMounted } from "@/lib/hooks/use-has-mounted";
 import { daysLeftInSprint, findCurrentSprint, formatSprintRange } from "@/lib/sprint-utils";
 import { SprintManagerModal } from "./sprint-manager-modal";
+import { SprintBuildsLink } from "@/components/builds/sprint-builds-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Select } from "@/components/ui/select";
 import { surfaceLayoutId } from "@/lib/motion";
@@ -224,6 +225,7 @@ export function KanbanBoard({ deepLinkTaskId }: { deepLinkTaskId: string | null 
               </span>
             </div>
           )}
+          {supabaseMode && selectedSprint && <SprintBuildsLink sprintId={selectedSprint.id} />}
           <button type="button" onClick={() => setIsSprintManagerOpen(true)} className={secondaryButtonSm}>
             <Settings2 className="h-3.5 w-3.5" />
             스프린트 관리

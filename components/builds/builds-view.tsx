@@ -10,13 +10,16 @@ import { useActiveProject } from "@/lib/supabase/use-active-project";
 import { useProjectRepositories } from "@/lib/supabase/hooks/use-project-repositories";
 import { useProjectMembers } from "@/lib/supabase/hooks/use-project-members";
 import { useProjectBuilds } from "@/lib/supabase/hooks/use-project-builds";
+import { useBuildLinks } from "@/lib/supabase/hooks/use-build-links";
+import { useLinkableTasks } from "@/lib/supabase/hooks/use-linkable-tasks";
+import { useSprints } from "@/lib/hooks/use-sprints";
 import { GITHUB_CONNECT_ERRORS } from "@/lib/github/connect-cookie";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { PageHeader } from "@/components/layout/page-header";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { primaryButton } from "@/components/ui/button-styles";
 import { SPRING } from "@/lib/motion";
-import { BuildList } from "./build-list";
+import { ALL_SPRINTS, BuildList } from "./build-list";
 import { ConnectRepositoryModal } from "./connect-repository-modal";
 
 const BUILD_SOURCE_LABELS: Record<ProjectRepositoryRow["build_source"], string> = {
@@ -41,6 +44,9 @@ export function BuildsView() {
   const { repositories, installations, isLoading, error, reload } = useProjectRepositories(projectId);
   const members = useProjectMembers(projectId);
   const { builds, isLoading: isLoadingBuilds, error: buildsError } = useProjectBuilds(projectId);
+  const { links, error: linksError, link, unlink } = useBuildLinks(projectId);
+  const tasks = useLinkableTasks(projectId);
+  const { sprints } = useSprints(projectId);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -50,15 +56,18 @@ export function BuildsView() {
   const [callbackError, setCallbackError] = useState<string | null>(null);
   const [connectedMessage, setConnectedMessage] = useState<string | null>(null);
   const [highlightBuildId, setHighlightBuildId] = useState<string | null>(null);
+  const [sprintFilter, setSprintFilter] = useState(ALL_SPRINTS);
 
-  // 설치 콜백(?connect= / ?github=), 다운로드 실패(?download=), 빌드 알림(?build=)이 붙인 값을
-  // 한 번 읽고 주소에서 지운다.
+  // 설치 콜백(?connect= / ?github=), 다운로드 실패(?download=), 빌드 알림(?build=),
+  // 칸반의 "빌드 N개"(?sprint=)가 붙인 값을 한 번 읽고 주소에서 지운다.
   useEffect(() => {
     const connect = searchParams.get("connect");
     const githubError = searchParams.get("github");
     const downloadError = searchParams.get("download");
     const buildId = searchParams.get("build");
-    if (!connect && !githubError && !downloadError && !buildId) return;
+    const sprintId = searchParams.get("sprint");
+    if (!connect && !githubError && !downloadError && !buildId && !sprintId) return;
+    if (sprintId) setSprintFilter(sprintId);
     if (downloadError) setCallbackError(DOWNLOAD_ERRORS[downloadError] ?? DOWNLOAD_ERRORS.error);
     if (buildId) setHighlightBuildId(buildId);
     if (connect && Number(connect) > 0) {
@@ -100,7 +109,7 @@ export function BuildsView() {
       />
 
       {isGuest && <Notice>게스트 모드에서는 GitHub을 연결할 수 없습니다. 가입 후 이용해주세요.</Notice>}
-      <ErrorAlert message={callbackError ?? error ?? buildsError} />
+      <ErrorAlert message={callbackError ?? error ?? buildsError ?? linksError} />
       <AnimatePresence initial={false}>
         {connectedMessage && (
           <motion.div
@@ -173,6 +182,13 @@ export function BuildsView() {
           repositories={repositories}
           isLoading={isLoadingBuilds}
           highlightBuildId={highlightBuildId}
+          links={links}
+          tasks={tasks}
+          sprints={sprints}
+          sprintFilter={sprintFilter}
+          onSprintFilterChange={setSprintFilter}
+          onLink={(buildId, target) => void link(buildId, target)}
+          onUnlink={(linkId) => void unlink(linkId)}
         />
       )}
 
