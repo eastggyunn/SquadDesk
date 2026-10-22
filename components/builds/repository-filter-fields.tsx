@@ -43,6 +43,17 @@ export function RepositoryFilterFields({ values, onChange, workflows }: Reposito
   const indicatorId = useId();
   const branchId = useId();
   const usesArtifacts = values.buildSource !== "release";
+  // 목록이 오기 전(또는 저장된 워크플로가 목록에서 사라진 경우)에도 지금 값을 파일 이름으로 바로 보여준다 —
+  // 칸을 비활성으로 두고 GitHub 응답을 기다리게 하지 않는다. 목록이 오면 워크플로 이름으로 바뀐다.
+  const workflowOptions = workflows === "unavailable" ? [] : (workflows ?? []);
+  const savedWorkflowMissing =
+    values.workflowPath !== ALL_WORKFLOWS && !workflowOptions.some((workflow) => workflow.path === values.workflowPath);
+  const selectableWorkflows = savedWorkflowMissing
+    ? [
+        ...workflowOptions,
+        { path: values.workflowPath, name: values.workflowPath.split("/").pop() ?? values.workflowPath },
+      ]
+    : workflowOptions;
 
   return (
     <>
@@ -92,10 +103,9 @@ export function RepositoryFilterFields({ values, onChange, workflows }: Reposito
                     aria-label="워크플로"
                     value={values.workflowPath}
                     onChange={(workflowPath) => onChange({ ...values, workflowPath })}
-                    disabled={workflows === null}
                     options={[
                       { value: ALL_WORKFLOWS, label: "전체 워크플로" },
-                      ...(workflows ?? []).map((workflow) => ({
+                      ...selectableWorkflows.map((workflow) => ({
                         value: workflow.path,
                         label: workflow.name,
                         triggerLabel: workflow.name,

@@ -47,30 +47,34 @@ export async function listInstallationRepositories(installationId: number): Prom
   }
 }
 
+export type GitHubWorkflow = { id: number; name: string; path: string; state: string };
+
 /**
- * 설치 토큰으로 저장소를 id로 조회한다. 사용자가 이 설치에서 앱에 허용하지 않은 저장소면
- * GitHub이 404를 주므로, 그대로 "이 설치에 속한 저장소인가" 검증을 겸한다. 없으면 null.
+ * 저장소 id로 바로 워크플로 목록을 읽는다(이름 조회를 한 번 건너뛴다). 이 설치에서 앱에 허용되지 않은
+ * 비공개 저장소면 GitHub이 404를 주므로 null. 공개 저장소는 설치와 무관하게 읽히지만 공개 정보라 문제없다
+ * (연결 자체는 connectRepository가 설치의 저장소 목록으로 범위를 다시 확인한다).
  */
-export async function getInstallationRepository(installationId: number, repoId: number): Promise<GitHubRepository | null> {
+export async function listRepositoryWorkflows(
+  installationId: number,
+  repoId: number
+): Promise<GitHubWorkflow[] | null> {
   try {
-    return await installationRequest<GitHubRepository>(installationId, `/repositories/${repoId}`);
+    const body = await installationRequest<{ workflows: GitHubWorkflow[] }>(
+      installationId,
+      `/repositories/${repoId}/actions/workflows?per_page=100`
+    );
+    return body.workflows;
   } catch (error) {
     if (error instanceof GitHubApiError && error.status === 404) return null;
     throw error;
   }
 }
 
-export type GitHubWorkflow ={ id: number; name: string; path: string; state: string };
-
-export async function listRepositoryWorkflows(installationId: number, repoFullName: string): Promise<GitHubWorkflow[]> {
-  const body = await installationRequest<{ workflows: GitHubWorkflow[] }>(
-    installationId,
-    `/repos/${repoFullName}/actions/workflows?per_page=100`
-  );
-  return body.workflows;
-}
-
-export async function listRunArtifacts(installationId: number, repoFullName: string, runId: number): Promise<GitHubArtifact[]> {
+export async function listRunArtifacts(
+  installationId: number,
+  repoFullName: string,
+  runId: number
+): Promise<GitHubArtifact[]> {
   const body = await installationRequest<{ artifacts: GitHubArtifact[] }>(
     installationId,
     `/repos/${repoFullName}/actions/runs/${runId}/artifacts?per_page=100`
@@ -93,9 +97,7 @@ export async function findLatestSuccessfulRun(
   return body.workflow_runs.find((run) => !filter.workflowPath || workflowPathOf(run) === filter.workflowPath) ?? null;
 }
 
-export type DownloadTarget =
-  | { kind: "artifact"; artifactId: number }
-  | { kind: "release_asset"; assetId: number };
+export type DownloadTarget = { kind: "artifact"; artifactId: number } | { kind: "release_asset"; assetId: number };
 
 /**
  * 다운로드용 임시 서명 URL(수 분 유효)을 받는다. 파일은 우리 서버를 거치지 않는다.

@@ -5,10 +5,9 @@ import { cookies } from "next/headers";
 import type { BuildSourceSetting } from "@/lib/supabase/schema";
 import { tryCreateServerSupabaseClient } from "@/lib/supabase/server";
 import { tryCreateServiceSupabaseClient } from "@/lib/supabase/service";
-import { getInstallUrl, GitHubApiError } from "./app-auth";
+import { getInstallationToken, getInstallUrl, GitHubApiError } from "./app-auth";
 import {
   findLatestSuccessfulRun,
-  getInstallationRepository,
   listInstallationRepositories,
   listRepositoryWorkflows,
   listRunArtifacts,
@@ -33,7 +32,11 @@ const BUILD_SOURCES: BuildSourceSetting[] = ["artifact", "release", "both"];
 type ServerClient = NonNullable<ReturnType<typeof tryCreateServerSupabaseClient>>;
 type MemberCheck = { error: string } | { supabase: ServerClient; userId: string };
 
-async function requireConnectableMember(projectId: string): Promise<MemberCheck> {
+/**
+ * 로그인·게스트·프로젝트 멤버·보관 여부를 확인한다. installationId를 주면 그 GitHub 설치에 대한
+ * 접근 검증(설치 콜백이 남긴 github_installation_access)도 프로젝트 조회와 동시에 확인한다.
+ */
+async function requireConnectableMember(projectId: string, installationId?: number): Promise<MemberCheck> {
   const supabase = tryCreateServerSupabaseClient();
   if (!supabase) return { error: "Supabase 설정 오류가 발생했습니다." };
 
@@ -43,27 +46,28 @@ async function requireConnectableMember(projectId: string): Promise<MemberCheck>
   if (!user) return { error: "로그인이 필요합니다." };
   if (user.is_anonymous) return { error: "게스트 모드에서는 GitHub을 연결할 수 없습니다." };
 
-  const { data: project } = await supabase.from("projects").select("archived_at").eq("id", projectId).maybeSingle();
+  const [{ data: project }, installationAccess] = await Promise.all([
+    supabase.from("projects").select("archived_at").eq("id", projectId).maybeSingle(),
+    installationId === undefined
+      ? Promise.resolve(null)
+      : supabase
+          .from("github_installation_access")
+          .select("installation_id")
+          .eq("installation_id", installationId)
+          .maybeSingle(),
+  ]);
   if (!project) return { error: "프로젝트 멤버만 저장소를 연결할 수 있습니다." };
   if (project.archived_at) return { error: "보관된 프로젝트에는 저장소를 연결할 수 없습니다." };
+  if (installationAccess && !installationAccess.data) {
+    return { error: "이 GitHub 계정에 대한 접근이 확인되지 않았습니다. 계정을 다시 연결해주세요." };
+  }
 
   return { supabase, userId: user.id };
 }
 
-/** 멤버 확인 + 이 사용자가 설치 콜백에서 그 GitHub 설치에 접근 가능함을 검증했는지 확인. */
-async function requireInstallationAccess(projectId: string, installationId: number): Promise<MemberCheck> {
-  const access = await requireConnectableMember(projectId);
-  if ("error" in access) return access;
-  const { data } = await access.supabase
-    .from("github_installation_access")
-    .select("installation_id")
-    .eq("installation_id", installationId)
-    .maybeSingle();
-  return data ? access : { error: "이 GitHub 계정에 대한 접근이 확인되지 않았습니다. 계정을 다시 연결해주세요." };
-}
-
 function describeError(error: unknown): string {
-  if (error instanceof GitHubApiError) return `GitHub과 통신하지 못했습니다 (응답 ${error.status}). 잠시 후 다시 시도해주세요.`;
+  if (error instanceof GitHubApiError)
+    return `GitHub과 통신하지 못했습니다 (응답 ${error.status}). 잠시 후 다시 시도해주세요.`;
   return "요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.";
 }
 
@@ -87,7 +91,7 @@ export async function listConnectableRepositories(
   projectId: string,
   installationId: number
 ): Promise<ActionResult<{ repositories: ConnectableRepository[] }>> {
-  const access = await requireInstallationAccess(projectId, installationId);
+  const access = await requireConnectableMember(projectId, installationId);
   if ("error" in access) return { ok: false, error: access.error };
 
   try {
@@ -111,13 +115,16 @@ export async function listRepositoryWorkflowOptions(
   installationId: number,
   repoId: number
 ): Promise<ActionResult<{ workflows: RepositoryWorkflow[] }>> {
-  const access = await requireInstallationAccess(projectId, installationId);
+  // 설치 토큰 발급(서버가 막 뜬 경우 ~0.4초)을 권한 확인과 동시에 시작해 둔다. 토큰은 서버 메모리
+  // 캐시에만 남고, 아래 확인을 통과하지 못하면 GitHub을 더 부르지 않는다.
+  const tokenWarmup = getInstallationToken(installationId).catch(() => undefined);
+  const access = await requireConnectableMember(projectId, installationId);
   if ("error" in access) return { ok: false, error: access.error };
 
   try {
-    const repo = await getInstallationRepository(installationId, repoId);
-    if (!repo) return { ok: false, error: "이 저장소에 대한 앱 권한이 없습니다." };
-    const workflows = await listRepositoryWorkflows(installationId, repo.full_name);
+    await tokenWarmup;
+    const workflows = await listRepositoryWorkflows(installationId, repoId);
+    if (!workflows) return { ok: false, error: "이 저장소에 대한 앱 권한이 없습니다." };
     return {
       ok: true,
       workflows: workflows
@@ -138,7 +145,7 @@ export async function connectRepository(input: {
   branchFilter: string | null;
 }): Promise<ActionResult<{ importedBuilds: number }>> {
   if (!BUILD_SOURCES.includes(input.buildSource)) return { ok: false, error: "빌드 소스 값이 올바르지 않습니다." };
-  const access = await requireInstallationAccess(input.projectId, input.installationId);
+  const access = await requireConnectableMember(input.projectId, input.installationId);
   if ("error" in access) return { ok: false, error: access.error };
   const service = tryCreateServiceSupabaseClient();
   if (!service) return { ok: false, error: "서버 설정(SUPABASE_SERVICE_ROLE_KEY)이 없어 연결할 수 없습니다." };
@@ -147,7 +154,9 @@ export async function connectRepository(input: {
   const branchFilter = input.branchFilter?.trim() || null;
 
   try {
-    const repo = await getInstallationRepository(input.installationId, input.repoId);
+    // 설치에서 앱에 허용한 저장소 목록으로 확인한다. 저장소 id로 직접 조회하면 공개 저장소는
+    // 설치 범위 밖이어도 읽혀서, webhook이 오지 않는 남의 공개 저장소가 연결될 수 있다.
+    const repo = (await listInstallationRepositories(input.installationId)).find((item) => item.id === input.repoId);
     if (!repo) return { ok: false, error: "이 저장소에 대한 앱 권한이 없습니다." };
 
     const { data: existing } = await service
