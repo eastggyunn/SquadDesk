@@ -11,7 +11,7 @@ const EXCERPT_LENGTH = 80;
 /** id 목록으로 한 테이블에서 id→값 맵을 만든다. 빈 목록이면 조회하지 않는다. */
 async function fetchColumnById(
   supabase: Client,
-  table: "tasks" | "bugs" | "chat_channels" | "task_comments" | "chat_messages",
+  table: "tasks" | "bugs" | "chat_channels" | "task_comments" | "chat_messages" | "builds",
   column: "title" | "name" | "content",
   ids: (string | null)[]
 ): Promise<Map<string, string>> {
@@ -30,13 +30,14 @@ async function fetchColumnById(
  */
 export async function enrichNotifications(supabase: Client, rows: NotificationRow[]): Promise<AppNotification[]> {
   if (rows.length === 0) return [];
-  const [usersById, taskTitles, bugTitles, channelNames, comments, messages] = await Promise.all([
+  const [usersById, taskTitles, bugTitles, channelNames, comments, messages, buildNames] = await Promise.all([
     fetchUsersById(supabase, rows.map((row) => row.actor_id)),
     fetchColumnById(supabase, "tasks", "title", rows.map((row) => row.task_id)),
     fetchColumnById(supabase, "bugs", "title", rows.map((row) => row.bug_id)),
     fetchColumnById(supabase, "chat_channels", "name", rows.map((row) => row.channel_id)),
     fetchColumnById(supabase, "task_comments", "content", rows.map((row) => row.comment_id)),
     fetchColumnById(supabase, "chat_messages", "content", rows.map((row) => row.message_id)),
+    fetchColumnById(supabase, "builds", "name", rows.map((row) => row.build_id)),
   ]);
 
   return rows.map((row) => {
@@ -53,6 +54,8 @@ export async function enrichNotifications(supabase: Client, rows: NotificationRo
       bugTitle: (row.bug_id && bugTitles.get(row.bug_id)) || null,
       channelId: row.channel_id,
       channelName: (row.channel_id && channelNames.get(row.channel_id)) || null,
+      buildId: row.build_id,
+      buildName: (row.build_id && buildNames.get(row.build_id)) || null,
       excerpt: content ? content.slice(0, EXCERPT_LENGTH) : null,
       detail: row.detail,
       createdAt: row.created_at,

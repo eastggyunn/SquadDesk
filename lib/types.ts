@@ -82,7 +82,7 @@ export interface TaskComment {
   mentionedUserIds: string[];
 }
 
-/** 알림 종류. supabase/migrations/…28_notification_center.sql의 notifications_kind_check와 같다. */
+/** 알림 종류. supabase/migrations/…31_github_builds.sql의 notifications_kind_check와 같다. */
 export type NotificationKind =
   | "task_comment_mention"
   | "task_comment"
@@ -91,7 +91,9 @@ export type NotificationKind =
   | "bug_assigned"
   | "task_status_changed"
   | "bug_status_changed"
-  | "task_due_soon";
+  | "task_due_soon"
+  | "build_ready"
+  | "build_linked";
 
 /** 상단 종 아이콘의 알림 한 건. 대상(작업/버그/채널)은 종류에 따라 하나만 채워진다. */
 export interface AppNotification {
@@ -106,6 +108,9 @@ export interface AppNotification {
   bugTitle: string | null;
   channelId: string | null;
   channelName: string | null;
+  /** 새 빌드/빌드 연결 알림의 빌드와 그 이름(artifact·asset 파일명). */
+  buildId: string | null;
+  buildName: string | null;
   /** 댓글/메시지 본문 앞부분. */
   excerpt: string | null;
   /** 상태 변경이면 바뀐 상태, 마감 임박이면 마감일(YYYY-MM-DD). */

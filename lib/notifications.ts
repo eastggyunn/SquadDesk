@@ -11,20 +11,25 @@ export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
   task_status_changed: "내 작업 상태 변경",
   bug_status_changed: "내 버그 상태 변경",
   task_due_soon: "작업 마감 하루 전",
+  build_ready: "새 빌드",
+  build_linked: "내 작업에 빌드 연결",
 };
 
 export const NOTIFICATION_KINDS = Object.keys(NOTIFICATION_KIND_LABELS) as NotificationKind[];
 
+// 메일 요약 행에는 빌드 정보가 없어 buildName은 선택 값이다(없으면 "빌드"로 쓴다).
 type DescribableNotification = Pick<
   AppNotification,
   "kind" | "actorName" | "taskTitle" | "bugTitle" | "channelName" | "detail"
->;
+> &
+  Partial<Pick<AppNotification, "buildName">>;
 
 /** "누가 무엇을 했다" 한 문장. 종 아이콘 목록과 메일 요약이 함께 쓴다. */
 export function describeNotification(notification: DescribableNotification): string {
   const actor = notification.actorName ?? "알 수 없는 사용자";
   const task = notification.taskTitle ? `'${notification.taskTitle}'` : "작업";
   const bug = notification.bugTitle ? `'${notification.bugTitle}'` : "버그";
+  const build = notification.buildName ? `'${notification.buildName}'` : "빌드";
   switch (notification.kind) {
     case "task_comment_mention":
       return `${actor}님이 ${task} 댓글에서 회원님을 멘션했습니다.`;
@@ -44,6 +49,11 @@ export function describeNotification(notification: DescribableNotification): str
       return `${actor}님이 버그 ${bug}을(를) '${notification.detail ?? "?"}'(으)로 바꿨습니다.`;
     case "task_due_soon":
       return `${task} 마감이 내일(${notification.detail ?? ""})입니다.`;
+    // 빌드는 CI가 만든 것이라 연결한 사람을 행동한 사람으로 쓰지 않는다. detail = 버전 라벨(#4, v0.3.0).
+    case "build_ready":
+      return `새 빌드 ${build}${notification.detail ? ` ${notification.detail}` : ""}이(가) 올라왔습니다.`;
+    case "build_linked":
+      return `${actor}님이 ${task}에 빌드 ${build}을(를) 연결했습니다.`;
   }
 }
 
@@ -52,11 +62,13 @@ export function describeNotification(notification: DescribableNotification): str
  * 각 화면은 ?task/?bug/?channel로 대상을 연다. 대상이 없으면(권한을 잃은 경우 등) null.
  */
 export function notificationHref(
-  notification: Pick<AppNotification, "projectId" | "taskId" | "bugId" | "channelId">
+  notification: Pick<AppNotification, "projectId" | "taskId" | "bugId" | "channelId"> &
+    Partial<Pick<AppNotification, "buildId">>
 ): string | null {
   const project = `project=${notification.projectId}`;
   if (notification.taskId) return `/kanban?task=${notification.taskId}&${project}`;
   if (notification.bugId) return `/bugs?bug=${notification.bugId}&${project}`;
   if (notification.channelId) return `/chat?channel=${notification.channelId}&${project}`;
+  if (notification.buildId) return `/builds?build=${notification.buildId}&${project}`;
   return null;
 }
