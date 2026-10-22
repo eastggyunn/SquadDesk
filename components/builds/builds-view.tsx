@@ -9,18 +9,28 @@ import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { useActiveProject } from "@/lib/supabase/use-active-project";
 import { useProjectRepositories } from "@/lib/supabase/hooks/use-project-repositories";
 import { useProjectMembers } from "@/lib/supabase/hooks/use-project-members";
+import { useProjectBuilds } from "@/lib/supabase/hooks/use-project-builds";
 import { GITHUB_CONNECT_ERRORS } from "@/lib/github/connect-cookie";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { PageHeader } from "@/components/layout/page-header";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { primaryButton } from "@/components/ui/button-styles";
 import { SPRING } from "@/lib/motion";
+import { BuildList } from "./build-list";
 import { ConnectRepositoryModal } from "./connect-repository-modal";
 
 const BUILD_SOURCE_LABELS: Record<ProjectRepositoryRow["build_source"], string> = {
   artifact: "Actions artifact",
   release: "Release",
   both: "Artifact + Release",
+};
+
+/** 다운로드 라우트(/api/builds/[id]/download)가 돌려보낼 때 붙이는 ?download= 사유. */
+const DOWNLOAD_ERRORS: Record<string, string> = {
+  expired: "보관 기간이 지난 빌드라 다운로드할 수 없습니다.",
+  disconnected: "저장소 연결이 해제되어 이 빌드를 다운로드할 수 없습니다.",
+  not_found: "빌드를 찾을 수 없습니다. 이 프로젝트의 멤버인지 확인해주세요.",
+  error: "다운로드 주소를 받지 못했습니다. 잠시 후 다시 시도해주세요.",
 };
 
 export function BuildsView() {
@@ -30,6 +40,7 @@ export function BuildsView() {
   const projectId = supabaseMode ? (activeProject?.id ?? null) : null;
   const { repositories, installations, isLoading, error, reload } = useProjectRepositories(projectId);
   const members = useProjectMembers(projectId);
+  const { builds, isLoading: isLoadingBuilds, error: buildsError } = useProjectBuilds(projectId);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -38,12 +49,18 @@ export function BuildsView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [callbackError, setCallbackError] = useState<string | null>(null);
   const [connectedMessage, setConnectedMessage] = useState<string | null>(null);
+  const [highlightBuildId, setHighlightBuildId] = useState<string | null>(null);
 
-  // 설치 콜백(/api/github/setup)이 붙여 보낸 ?connect= / ?github= 를 한 번 읽고 주소에서 지운다.
+  // 설치 콜백(?connect= / ?github=), 다운로드 실패(?download=), 빌드 알림(?build=)이 붙인 값을
+  // 한 번 읽고 주소에서 지운다.
   useEffect(() => {
     const connect = searchParams.get("connect");
     const githubError = searchParams.get("github");
-    if (!connect && !githubError) return;
+    const downloadError = searchParams.get("download");
+    const buildId = searchParams.get("build");
+    if (!connect && !githubError && !downloadError && !buildId) return;
+    if (downloadError) setCallbackError(DOWNLOAD_ERRORS[downloadError] ?? DOWNLOAD_ERRORS.error);
+    if (buildId) setHighlightBuildId(buildId);
     if (connect && Number(connect) > 0) {
       setModalInstallationId(Number(connect));
       setIsModalOpen(true);
@@ -83,7 +100,7 @@ export function BuildsView() {
       />
 
       {isGuest && <Notice>게스트 모드에서는 GitHub을 연결할 수 없습니다. 가입 후 이용해주세요.</Notice>}
-      <ErrorAlert message={callbackError ?? error} />
+      <ErrorAlert message={callbackError ?? error ?? buildsError} />
       <AnimatePresence initial={false}>
         {connectedMessage && (
           <motion.div
@@ -150,6 +167,15 @@ export function BuildsView() {
         </section>
       )}
 
+      {repositories.length > 0 && (
+        <BuildList
+          builds={builds}
+          repositories={repositories}
+          isLoading={isLoadingBuilds}
+          highlightBuildId={highlightBuildId}
+        />
+      )}
+
       <ConnectRepositoryModal
         open={isModalOpen}
         projectId={projectId}
@@ -162,7 +188,7 @@ export function BuildsView() {
           setConnectedMessage(
             importedBuilds > 0
               ? `저장소를 연결했습니다. 최근 빌드 ${importedBuilds}개를 가져왔습니다.`
-              : "저장소를 연결했습니다. 다음 빌드부터 자동으로 올라옵니다.",
+              : "저장소를 연결했습니다. 다음 빌드부터 자동으로 올라옵니다."
           );
           void reload();
         }}

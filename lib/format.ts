@@ -39,3 +39,16 @@ export function withObjectParticle(word: string): string {
   if (Number.isNaN(code) || code < 0 || code > 11171) return `${word}을(를)`;
   return `${word}${code % 28 === 0 ? "를" : "을"}`;
 }
+
+/** 파일 크기 "38.1 MB" / "820 KB". 빌드 목록처럼 크기를 읽기 쉽게 보여줄 때 쓴다. */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value >= 100 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`;
+}

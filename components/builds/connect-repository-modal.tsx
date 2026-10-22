@@ -76,7 +76,7 @@ function ConnectRepositoryModalContent({
   useEscapeKey(onClose);
 
   const [installationId, setInstallationId] = useState<number | null>(
-    initialInstallationId ?? (installations.length === 1 ? installations[0].installation_id : null),
+    initialInstallationId ?? (installations.length === 1 ? installations[0].installation_id : null)
   );
   const [repositories, setRepositories] = useState<ConnectableRepository[] | null>(null);
   const [repository, setRepository] = useState<ConnectableRepository | null>(null);
