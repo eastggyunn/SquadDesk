@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, Github, Info, Package, Plus } from "lucide-react";
+import { CheckCircle2, Github, Info, Package, Plus, Settings2 } from "lucide-react";
 import type { ProjectRepositoryRow } from "@/lib/supabase/schema";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { useActiveProject } from "@/lib/supabase/use-active-project";
@@ -13,6 +13,7 @@ import { useProjectBuilds } from "@/lib/supabase/hooks/use-project-builds";
 import { useBuildLinks } from "@/lib/supabase/hooks/use-build-links";
 import { useLinkableTasks } from "@/lib/supabase/hooks/use-linkable-tasks";
 import { useSprints } from "@/lib/hooks/use-sprints";
+import { useHasMounted } from "@/lib/hooks/use-has-mounted";
 import { GITHUB_CONNECT_ERRORS } from "@/lib/github/connect-cookie";
 import { useCurrentUser } from "@/components/providers/current-user-provider";
 import { PageHeader } from "@/components/layout/page-header";
@@ -21,6 +22,7 @@ import { primaryButton } from "@/components/ui/button-styles";
 import { SPRING } from "@/lib/motion";
 import { ALL_SPRINTS, BuildList } from "./build-list";
 import { ConnectRepositoryModal } from "./connect-repository-modal";
+import { RepositorySettingsModal } from "./repository-settings-modal";
 
 const BUILD_SOURCE_LABELS: Record<ProjectRepositoryRow["build_source"], string> = {
   artifact: "Actions artifact",
@@ -38,7 +40,8 @@ const DOWNLOAD_ERRORS: Record<string, string> = {
 
 export function BuildsView() {
   const supabaseMode = isSupabaseConfigured();
-  const { isGuest } = useCurrentUser();
+  const { id: currentUserId, isGuest } = useCurrentUser();
+  const hasMounted = useHasMounted();
   const { activeProject } = useActiveProject();
   const projectId = supabaseMode ? (activeProject?.id ?? null) : null;
   const { repositories, installations, isLoading, error, reload } = useProjectRepositories(projectId);
@@ -57,6 +60,7 @@ export function BuildsView() {
   const [connectedMessage, setConnectedMessage] = useState<string | null>(null);
   const [highlightBuildId, setHighlightBuildId] = useState<string | null>(null);
   const [sprintFilter, setSprintFilter] = useState(ALL_SPRINTS);
+  const [settingsRepository, setSettingsRepository] = useState<ProjectRepositoryRow | null>(null);
 
   // 설치 콜백(?connect= / ?github=), 다운로드 실패(?download=), 빌드 알림(?build=),
   // 칸반의 "빌드 N개"(?sprint=)가 붙인 값을 한 번 읽고 주소에서 지운다.
@@ -82,12 +86,17 @@ export function BuildsView() {
   if (!supabaseMode) {
     return <Notice>빌드 연동은 실제 Supabase 연결이 필요합니다.</Notice>;
   }
+  // 활성 프로젝트는 localStorage에서 마운트 후에 정해진다 — 그 전에 "프로젝트 없음"이 번쩍이지 않게 기다린다.
+  if (!hasMounted) return null;
   if (!projectId) {
     return <Notice>소속된 프로젝트가 없습니다. 프로젝트 관리자에게 초대를 요청해주세요.</Notice>;
   }
 
   const activeRepositories = repositories.filter((repo) => !repo.disconnected_at);
   const memberName = (userId: string | null) => members.find((member) => member.id === userId)?.name ?? "알 수 없음";
+  // 설정 변경·해제는 연결한 본인과 owner만(RLS도 같은 규칙) — 나머지에겐 버튼을 보이지 않는다.
+  const canManage = (repo: ProjectRepositoryRow) =>
+    !repo.disconnected_at && !isGuest && (repo.connected_by === currentUserId || activeProject?.role === "owner");
 
   function openModal() {
     setModalInstallationId(null);
@@ -163,6 +172,17 @@ export function BuildsView() {
                     {repo.repo_full_name}
                   </a>
                   {repo.disconnected_at && <span className="shrink-0 text-xs text-zinc-500">연결 해제됨</span>}
+                  {canManage(repo) && (
+                    <button
+                      type="button"
+                      onClick={() => setSettingsRepository(repo)}
+                      aria-label={`${repo.repo_full_name} 설정`}
+                      title="저장소 설정"
+                      className="ml-auto rounded-lg p-1 text-zinc-500 transition-[transform,color] duration-150 hover:text-zinc-200 active:scale-90"
+                    >
+                      <Settings2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
                 <p className="mt-1 truncate text-xs text-zinc-500">
                   {BUILD_SOURCE_LABELS[repo.build_source]}
@@ -191,6 +211,17 @@ export function BuildsView() {
           onUnlink={(linkId) => void unlink(linkId)}
         />
       )}
+
+      <RepositorySettingsModal
+        repository={settingsRepository}
+        projectId={projectId}
+        onClose={() => setSettingsRepository(null)}
+        onChanged={(message) => {
+          setSettingsRepository(null);
+          setConnectedMessage(message);
+          void reload();
+        }}
+      />
 
       <ConnectRepositoryModal
         open={isModalOpen}

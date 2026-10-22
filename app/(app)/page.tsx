@@ -13,6 +13,7 @@ import { MyTasksWidget } from "@/components/dashboard/my-tasks-widget";
 import { CriticalBugsWidget } from "@/components/dashboard/critical-bugs-widget";
 import { RecentActivityWidget } from "@/components/dashboard/recent-activity-widget";
 import { SyncedAssetsWidget } from "@/components/dashboard/synced-assets-widget";
+import { LatestBuildsWidget } from "@/components/dashboard/latest-builds-widget";
 
 /** 활성 프로젝트가 있으면 프로젝트 이름을, 없으면(로컬 데모 등) 툴 이름을 제목으로 쓴다. */
 function DashboardTitle() {
@@ -74,6 +75,9 @@ function DashboardBody() {
           error={dataError}
         />
       </div>
+
+      {/* GitHub 빌드 연동은 실제 Supabase 모드에서만 — 저장소가 없으면 위젯이 스스로 숨는다. */}
+      {activeProjectId && <LatestBuildsWidget projectId={activeProjectId} />}
 
       <SyncedAssetsWidget />
     </>

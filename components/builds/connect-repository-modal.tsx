@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Github, Lock, Plus } from "lucide-react";
-import type { BuildSourceSetting, GitHubInstallationRow } from "@/lib/supabase/schema";
+import type { GitHubInstallationRow } from "@/lib/supabase/schema";
 import {
   connectRepository,
   listConnectableRepositories,
@@ -14,12 +14,11 @@ import {
 } from "@/lib/github/connect-actions";
 import { ErrorAlert } from "@/components/ui/error-alert";
 import { ModalPortal } from "@/components/ui/modal-portal";
-import { Select } from "@/components/ui/select";
-import { SegmentedIndicator } from "@/components/ui/segmented-indicator";
-import { primaryButton, secondaryButton, segmentedGroup, segmentedItem } from "@/components/ui/button-styles";
+import { primaryButton, secondaryButton } from "@/components/ui/button-styles";
 import { useEscapeKey } from "@/lib/hooks/use-escape-key";
 import { FADE, SPRING } from "@/lib/motion";
 import { useOverlayDepth } from "@/lib/store/overlay-store";
+import { ALL_WORKFLOWS, RepositoryFilterFields, type RepositoryFilterValues } from "./repository-filter-fields";
 
 interface ConnectRepositoryModalProps {
   open: boolean;
@@ -32,14 +31,6 @@ interface ConnectRepositoryModalProps {
   onClose: () => void;
   onConnected: (importedBuilds: number) => void;
 }
-
-const SOURCE_OPTIONS: { value: BuildSourceSetting; label: string }[] = [
-  { value: "artifact", label: "Actions artifact" },
-  { value: "release", label: "Release" },
-  { value: "both", label: "둘 다" },
-];
-
-const ALL_WORKFLOWS = "";
 
 const STEPS = ["account", "repository", "settings"] as const;
 
@@ -291,11 +282,12 @@ function RepositorySettingsForm({
   onError: (message: string | null) => void;
   onConnected: (importedBuilds: number) => void;
 }) {
-  const indicatorId = useId();
   const [workflows, setWorkflows] = useState<RepositoryWorkflow[] | null>(null);
-  const [workflowPath, setWorkflowPath] = useState(ALL_WORKFLOWS);
-  const [branch, setBranch] = useState(repository.defaultBranch);
-  const [buildSource, setBuildSource] = useState<BuildSourceSetting>("artifact");
+  const [filters, setFilters] = useState<RepositoryFilterValues>({
+    buildSource: "artifact",
+    workflowPath: ALL_WORKFLOWS,
+    branch: repository.defaultBranch,
+  });
   const [consented, setConsented] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -306,7 +298,10 @@ function RepositorySettingsForm({
       if (result.ok) {
         setWorkflows(result.workflows);
         // 워크플로가 하나뿐이면 그것을 기본으로 고른다(대부분의 게임 저장소가 빌드 워크플로 하나다).
-        if (result.workflows.length === 1) setWorkflowPath(result.workflows[0].path);
+        if (result.workflows.length === 1) {
+          const onlyPath = result.workflows[0].path;
+          setFilters((current) => ({ ...current, workflowPath: onlyPath }));
+        }
       } else {
         setWorkflows([]);
         onError(result.error);
@@ -326,9 +321,9 @@ function RepositorySettingsForm({
       projectId,
       installationId,
       repoId: repository.id,
-      buildSource,
-      workflowPath: workflowPath || null,
-      branchFilter: branch,
+      buildSource: filters.buildSource,
+      workflowPath: filters.workflowPath || null,
+      branchFilter: filters.branch,
     });
     if (result.ok) {
       onConnected(result.importedBuilds);
@@ -338,82 +333,9 @@ function RepositorySettingsForm({
     }
   }
 
-  const usesArtifacts = buildSource !== "release";
-
   return (
     <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
-      <div>
-        <span className="block text-xs font-medium text-zinc-400">받을 빌드</span>
-        <div className={`${segmentedGroup} mt-1.5`}>
-          {SOURCE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setBuildSource(option.value)}
-              className={`relative ${segmentedItem} border-transparent ${
-                buildSource === option.value ? "text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              {buildSource === option.value && <SegmentedIndicator layoutId={indicatorId} />}
-              <span className="relative">{option.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <AnimatePresence initial={false}>
-        {usesArtifacts && (
-          <motion.div
-            key="artifact-filters"
-            // 높이 0이어도 부모 flex gap(16px)이 남으므로 marginTop -16으로 같이 접는다.
-            initial={{ height: 0, opacity: 0, marginTop: -16 }}
-            animate={{ height: "auto", opacity: 1, marginTop: 0 }}
-            exit={{ height: 0, opacity: 0, marginTop: -16 }}
-            transition={SPRING.collapse}
-            className="overflow-hidden"
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <span className="block text-xs font-medium text-zinc-400">워크플로</span>
-                <Select
-                  aria-label="워크플로"
-                  value={workflowPath}
-                  onChange={setWorkflowPath}
-                  disabled={workflows === null}
-                  options={[
-                    { value: ALL_WORKFLOWS, label: "전체 워크플로" },
-                    ...(workflows ?? []).map((workflow) => ({
-                      value: workflow.path,
-                      label: workflow.name,
-                      triggerLabel: workflow.name,
-                    })),
-                  ]}
-                  wrapperClassName="mt-1.5"
-                  className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100"
-                />
-              </div>
-              <div>
-                <label htmlFor="connect-branch" className="block text-xs font-medium text-zinc-400">
-                  브랜치 <span className="text-zinc-600">(비우면 전체)</span>
-                </label>
-                <input
-                  id="connect-branch"
-                  value={branch}
-                  onChange={(event) => setBranch(event.target.value)}
-                  placeholder="전체 브랜치"
-                  className="mt-1.5 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-cyan-500 focus:outline-none"
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <p className="text-[11px] leading-relaxed text-zinc-600">
-        {usesArtifacts
-          ? "조건에 맞는 워크플로가 성공하면 빌드가 자동으로 올라옵니다. 실패한 실행은 가져오지 않습니다."
-          : "Release를 게시하면 첨부 파일이 빌드로 올라옵니다."}
-      </p>
+      <RepositoryFilterFields values={filters} onChange={setFilters} workflows={workflows} />
 
       <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
         <input
